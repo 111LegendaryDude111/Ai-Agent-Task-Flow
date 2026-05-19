@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.0.0",
+  "name": "AutoFlow State Machine",
+  "description": "Deterministic state machine for test-first multi-agent implementation flow.",
+  "entry_state": "intake",
+  "terminal_states": ["done", "blocked"],
+  "state_source_of_truth": ".tmp/tasks/{feature}/task.json and subtask_NN.json files",
+  "agents": {
+    "orchestrator": "synapse",
+    "context": "ContextScout",
+    "planner": "TaskManager",
+    "test_designer": "TestDesigner",
+    "validator": "BuildAgent",
+    "diagnostician": "TestDiagnostician",
+    "reviewer": "CodeReviewer",
+    "implementer": "routing-rules-selected implementation subagent, including MLDeveloper for ML/RAG/model work"
+  },
+  "states": [
+    {
+      "id": "intake",
+      "owner": "synapse",
+      "purpose": "Capture the user goal, constraints, target repo scope, and success criteria.",
+      "required_artifacts": ["user_goal"],
+      "actions": [
+        "Restate the goal and assumptions.",
+        "Ask for missing hard requirements before planning.",
+        "Classify the task type, stack, and complexity."
+      ],
+      "transitions": [
+        {
+          "to": "context_discovery",
+          "when": "goal is clear enough to discover context"
+        },
+        {
+          "to": "blocked",
+          "when": "goal lacks required acceptance criteria or repository scope"
+        }
+      ]
+    },
+    {
+      "id": "context_discovery",
+      "owner": "ContextScout",
+      "purpose": "Find only context needed for planning and implementation.",
+      "required_artifacts": ["context_files_found"],
+      "actions": [
+        "Read context/navigation.md or context/core/navigation.md.",
+        "Find relevant source, test, config, and standards files.",
+        "Return critical and optional context paths."
+      ],
+      "transitions": [
+        {
+          "to": "task_decomposition",
+          "when": "critical context exists or user accepts limited context"
+        },
+        {
+          "to": "blocked",
+          "when": "required context is missing and cannot be inferred safely"
+        }
+      ]
+    },
+    {
+      "id": "task_decomposition",
+      "owner": "TaskManager",
+      "purpose": "Create vertical, independently verifiable subtasks with DoR, DoD, and verification specs.",
+      "required_artifacts": [".tmp/tasks/{feature}/task.json", ".tmp/tasks/{feature}/subtask_NN.json"],
+      "actions": [
+        "Split the goal into vertical tracer-bullet subtasks.",
+        "Each subtask must include Definition of Ready and Definition of Done in acceptance criteria.",
+        "Each subtask must include suggested_agent, deliverables, dependencies, and verification_spec.",
+        "Run task-cli validate for the feature when permitted."
+      ],
+      "transitions": [
+        {
+          "to": "select_next_subtask",
+          "when": "task files validate and at least one subtask is ready"
+        },
+        {
+          "to": "blocked",
+          "when": "decomposition cannot produce deterministic verification"
+        }
+      ]
+    },
+    {
+      "id": "select_next_subtask",
+      "owner": "synapse",
+      "purpose": "Select the next dependency-ready subtask from task-cli state.",
+      "required_artifacts": ["next_subtask"],
+      "actions": [
+        "Run or request task-cli next <feature>.",
+        "Mark the selected subtask in_progress when the task system requires it.",
+        "Load subtask context_files, acceptance_criteria, deliverables, and verification_spec."
+      ],
+      "transitions": [
+        {
+          "to": "write_failing_test",
+          "when": "next subtask exists and needs implementation"
+        },
+        {
+          "to": "feature_verification",
+          "when": "all subtasks are completed"
+        },
+        {
+          "to": "blocked",
+          "when": "remaining subtasks are blocked by dependencies or missing context"
+        }
+      ]
+    },
+    {
+      "id": "write_failing_test",
+      "owner": "TestDesigner",
+      "purpose": "Create or confirm focused failing behavior coverage before production changes.",
+      "required_artifacts": ["test_files", "targeted_test_command", "expected_red_state"],
+      "actions": [
+        "Write tests only.",
+        "Prefer one behavior test for the selected subtask.",
+        "Use existing test conventions, fixtures, and public interfaces.",
+        "Return the targeted command and expected failure."
+      ],
+      "transitions": [
+        {
+          "to": "confirm_red",
+          "when": "tests were added or relevant failing coverage already exists"
+        },
+        {
+          "to": "blocked",
+          "when": "TestDesigner cannot create behavior-level tests without new requirements"
+        }
+      ]
+    },
+    {
+      "id": "confirm_red",
+      "owner": "BuildAgent",
+      "purpose": "Confirm tests fail for the expected reason before implementation.",
+      "required_artifacts": ["red_test_output"],
+      "actions": [
+        "Run the narrowest targeted test command when permitted.",
+        "Confirm failure matches expected missing behavior.",
+        "Do not edit files."
+      ],
+      "transitions": [
+        {
+          "to": "implement_minimal_change",
+          "when": "targeted test fails for expected behavior reason"
+        },
+        {
+          "to": "review",
+          "when": "targeted test already passes and required behavior already exists"
+        },
+        {
+          "to": "diagnose_failure",
+          "when": "failure is unrelated, ambiguous, flaky, or setup-related"
+        }
+      ]
+    },
+    {
+      "id": "implement_minimal_change",
+      "owner": "implementer",
+      "purpose": "Implement the smallest production change needed for the selected subtask.",
+      "required_artifacts": ["production_changes"],
+      "actions": [
+        "Route via context/core/rules/routing-rules.json to the implementation subagent.",
+        "Touch only files needed for the selected subtask.",
+        "Do not weaken tests unless they contradict explicit requirements.",
+        "Stop after the selected behavior is implemented."
+      ],
+      "transitions": [
+        {
+          "to": "validate_green",
+          "when": "minimal implementation is complete"
+        }
+      ]
+    },
+    {
+      "id": "validate_green",
+      "owner": "BuildAgent",
+      "purpose": "Run targeted validation and confirm the selected subtask is green.",
+      "required_artifacts": ["green_test_output"],
+      "actions": [
+        "Run the targeted test command first.",
+        "Run broader checks only when required by verification_spec.",
+        "Report command, exit code, and failure summary."
+      ],
+      "transitions": [
+        {
+          "to": "review",
+          "when": "all targeted validation passes"
+        },
+        {
+          "to": "diagnose_failure",
+          "when": "any targeted validation fails"
+        }
+      ]
+    },
+    {
+      "id": "diagnose_failure",
+      "owner": "TestDiagnostician",
+      "purpose": "Classify failing test output and recommend the smallest safe next action.",
+      "required_artifacts": ["failure_classification", "minimal_fix_recommendation"],
+      "actions": [
+        "Classify as production bug, invalid test, fixture issue, environment issue, or flake.",
+        "Prefer fixing production behavior when tests match explicit requirements.",
+        "Do not edit files."
+      ],
+      "transitions": [
+        {
+          "to": "implement_minimal_change",
+          "when": "failure classification indicates production bug or missing implementation"
+        },
+        {
+          "to": "write_failing_test",
+          "when": "failure classification indicates invalid or over-specified test"
+        },
+        {
+          "to": "blocked",
+          "when": "failure requires environment access, missing secrets, unavailable services, or user decision"
+        }
+      ]
+    },
+    {
+      "id": "review",
+      "owner": "CodeReviewer",
+      "purpose": "Review correctness, risk, maintainability, and test coverage before completion.",
+      "required_artifacts": ["review_result"],
+      "actions": [
+        "Review only the selected subtask diff and tests.",
+        "Report blocking findings as path:line — problem — fix.",
+        "Confirm no blocking findings when acceptable."
+      ],
+      "transitions": [
+        {
+          "to": "verify_subtask",
+          "when": "no blocking findings"
+        },
+        {
+          "to": "implement_minimal_change",
+          "when": "blocking implementation findings exist"
+        },
+        {
+          "to": "write_failing_test",
+          "when": "blocking test coverage findings exist"
+        }
+      ]
+    },
+    {
+      "id": "verify_subtask",
+      "owner": "synapse",
+      "purpose": "Run the task-cli verification gate for the selected subtask.",
+      "required_artifacts": ["verification_evidence"],
+      "actions": [
+        "Run task-cli verify <feature> <seq> when permitted.",
+        "If verification fails, preserve output and route to diagnosis or implementation.",
+        "Do not complete without passed verification."
+      ],
+      "transitions": [
+        {
+          "to": "complete_subtask",
+          "when": "task-cli verify passes"
+        },
+        {
+          "to": "diagnose_failure",
+          "when": "verification fails due to tests or validation command"
+        },
+        {
+          "to": "blocked",
+          "when": "verification fails due to missing permissions, environment, or ambiguous requirements"
+        }
+      ]
+    },
+    {
+      "id": "complete_subtask",
+      "owner": "synapse",
+      "purpose": "Close the selected subtask only after successful verification.",
+      "required_artifacts": ["completion_summary"],
+      "actions": [
+        "Run task-cli complete <feature> <seq> \"summary\" when permitted.",
+        "Summarize changed files, tests, review, and verification."
+      ],
+      "transitions": [
+        {
+          "to": "select_next_subtask",
+          "when": "subtask completes and more subtasks remain"
+        },
+        {
+          "to": "feature_verification",
+          "when": "all subtasks are completed"
+        }
+      ]
+    },
+    {
+      "id": "feature_verification",
+      "owner": "synapse",
+      "purpose": "Run feature-level verification after all subtasks complete.",
+      "required_artifacts": ["feature_verification_evidence"],
+      "actions": [
+        "Run task-cli verify-feature <feature> when feature verification_spec exists.",
+        "Run task-cli archive <feature> only after feature verification passes and user wants archive.",
+        "Report any remaining risks."
+      ],
+      "transitions": [
+        {
+          "to": "done",
+          "when": "feature verification passes or no feature-level archive is required"
+        },
+        {
+          "to": "blocked",
+          "when": "feature verification fails and no deterministic next subtask can be selected"
+        }
+      ]
+    },
+    {
+      "id": "done",
+      "owner": "synapse",
+      "purpose": "Report final verified result.",
+      "required_artifacts": ["final_summary"],
+      "actions": [
+        "Return summary, changed files, subagents used, verification run, and remaining risks."
+      ],
+      "transitions": []
+    },
+    {
+      "id": "blocked",
+      "owner": "synapse",
+      "purpose": "Stop safely and ask for the smallest missing input or permission.",
+      "required_artifacts": ["blocker_reason", "next_action"],
+      "actions": [
+        "Do not claim completion.",
+        "Report blocker evidence and the exact next action needed."
+      ],
+      "transitions": []
+    }
+  ],
+  "global_guards": [
+    "edit/write inside target repository and safe read-only bash allowlist are allowed after task approval; other bash/delete/dependency-install/network/destructive-git/outside-repo/secrets operations require explicit approval before execution",
+    "Synapse does not directly implement production code",
+    "one behavior -> one failing test -> minimal implementation -> green",
+    "tests must not be weakened unless they contradict explicit requirements",
+    "completion requires task-cli verify then task-cli complete"
+  ]
+}

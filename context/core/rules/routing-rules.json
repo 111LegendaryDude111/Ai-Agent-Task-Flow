@@ -1,0 +1,616 @@
+{
+  "$schema": "./routing-rules.schema.json",
+  "version": "1.0.0",
+  "name": "Agentic Flow MVP Routing Rules",
+  "description": "Provider-neutral deterministic routing rules for the clean MVP.",
+  "last_updated": "2026-05-18",
+  "rules": [
+    {
+      "id": "approval-gate",
+      "name": "Approval Gate",
+      "version": "1.0.0",
+      "priority": 200,
+      "description": "Dangerous shell, delete, install, network, destructive git, outside-repo, and secrets/env operations require explicit user approval before execution. Safe read-only shell commands can execute directly.",
+      "tags": [
+        "safety",
+        "mandatory"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "operation_type",
+        "operator": "in",
+        "value": [
+          "dangerous_bash",
+          "delete",
+          "dependency_install",
+          "network",
+          "destructive_git",
+          "outside_repo_edit",
+          "secret_edit"
+        ]
+      },
+      "action": {
+        "type": "REQUEST_APPROVAL",
+        "error_handling": {
+          "on_failure": "fail"
+        }
+      }
+    },
+    {
+      "id": "test-failure-diagnosis-routing",
+      "name": "Test Failure Diagnosis Routing",
+      "version": "1.0.0",
+      "priority": 155,
+      "description": "Route failing test analysis to TestDiagnostician.",
+      "tags": [
+        "testing",
+        "diagnosis"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "test_failure_diagnosis",
+              "test_debugging"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "test failure output"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "failing test output"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "TestDiagnostician"
+      }
+    },
+    {
+      "id": "playwright-test-routing",
+      "name": "Playwright Test Routing",
+      "version": "1.0.0",
+      "priority": 150,
+      "description": "Route Playwright/E2E test work to PlaywrightTestGenerator.",
+      "tags": [
+        "testing",
+        "e2e"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "playwright_test",
+              "e2e_test"
+            ]
+          },
+          {
+            "type": "file_extension",
+            "operator": "in",
+            "value": [
+              ".spec.ts",
+              ".spec.js",
+              ".test.ts",
+              ".test.js"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "playwright"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "PlaywrightTestGenerator"
+      }
+    },
+    {
+      "id": "test-first-design-routing",
+      "name": "Test-first Design Routing",
+      "version": "1.0.0",
+      "priority": 152,
+      "description": "Route TDD/test-first design work to TestDesigner.",
+      "tags": [
+        "testing",
+        "tdd"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "test_first_design",
+              "unit_test",
+              "integration_test",
+              "tdd_test"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "test-first"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "TDD"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "TestDesigner"
+      }
+    },
+    {
+      "id": "ml-development-routing",
+      "name": "ML Development Routing",
+      "version": "1.0.0",
+      "priority": 130,
+      "description": "Route ML, RAG, model evaluation, feature pipeline, and inference work to MLDeveloper.",
+      "tags": [
+        "ml",
+        "data",
+        "rag"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "ml_implementation",
+              "ml_review",
+              "model_training",
+              "model_evaluation",
+              "feature_engineering",
+              "data_pipeline_ml",
+              "inference_service",
+              "rag_pipeline",
+              "ranking_retrieval"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "machine learning"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "deep learning"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "model training"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "model evaluation"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "feature engineering"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "data leakage"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "RAG"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "LLM pipeline"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "fraud detection"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "anomaly detection"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "ranking"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "retrieval"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "MLDeveloper"
+      }
+    },
+    {
+      "id": "mandatory-backend-routing",
+      "name": "Java Backend Routing",
+      "version": "1.0.0",
+      "priority": 120,
+      "description": "Route Java/Kotlin/Gradle backend work to JavaDeveloper.",
+      "tags": [
+        "backend",
+        "java"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "AND",
+        "expressions": [
+          {
+            "type": "repo_type",
+            "operator": "eq",
+            "value": "java"
+          },
+          {
+            "type": "file_extension",
+            "operator": "in",
+            "value": [
+              ".java",
+              ".kt",
+              ".kts",
+              ".gradle",
+              ".xml",
+              ".properties",
+              ".yml",
+              ".yaml"
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "JavaDeveloper"
+      }
+    },
+    {
+      "id": "mandatory-frontend-routing",
+      "name": "Frontend Routing",
+      "version": "1.0.0",
+      "priority": 110,
+      "description": "Route JS/TS/React/CSS work to FrontendDeveloper.",
+      "tags": [
+        "frontend",
+        "js"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "AND",
+        "expressions": [
+          {
+            "type": "repo_type",
+            "operator": "eq",
+            "value": "js"
+          },
+          {
+            "type": "file_extension",
+            "operator": "in",
+            "value": [
+              ".js",
+              ".jsx",
+              ".ts",
+              ".tsx",
+              ".css",
+              ".module.css",
+              ".scss",
+              ".sass",
+              ".less"
+            ]
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "FrontendDeveloper"
+      }
+    },
+    {
+      "id": "task-planning-routing",
+      "name": "Complex Task Planning",
+      "version": "1.0.0",
+      "priority": 100,
+      "description": "Complex implementation/refactoring work must be decomposed by TaskManager.",
+      "tags": [
+        "planning"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "AND",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "coding",
+              "implementation",
+              "feature",
+              "refactoring"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "complex"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "TaskManager"
+      }
+    },
+    {
+      "id": "documentation-routing",
+      "name": "Documentation Routing",
+      "version": "1.0.0",
+      "priority": 80,
+      "description": "Route documentation work to DocWriter.",
+      "tags": [
+        "docs"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "documentation",
+              "doc_generation",
+              "readme_update"
+            ]
+          },
+          {
+            "type": "file_path",
+            "operator": "contains",
+            "value": "docs/"
+          },
+          {
+            "type": "file_path",
+            "operator": "contains",
+            "value": "README"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "DocWriter"
+      }
+    },
+    {
+      "id": "code-review-routing",
+      "name": "Code Review Routing",
+      "version": "1.0.0",
+      "priority": 80,
+      "description": "Route review/audit work to CodeReviewer.",
+      "tags": [
+        "review"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "code_review",
+              "security_review",
+              "audit"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "review"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "CodeReviewer"
+      }
+    },
+    {
+      "id": "build-validation-routing",
+      "name": "Build Validation Routing",
+      "version": "1.0.0",
+      "priority": 80,
+      "description": "Route build/test validation work to BuildAgent.",
+      "tags": [
+        "build",
+        "validation"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "in",
+            "value": [
+              "build_validation",
+              "ci_fix",
+              "test_validation"
+            ]
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "build"
+          },
+          {
+            "type": "context_contains",
+            "operator": "contains",
+            "value": "test"
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "BuildAgent"
+      }
+    },
+    {
+      "id": "generic-coding-routing",
+      "name": "Generic Coding Routing",
+      "version": "1.0.0",
+      "priority": 50,
+      "description": "Route implementation work without a more specific specialist to CoderAgent.",
+      "tags": [
+        "coding",
+        "fallback"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "task_type",
+        "operator": "in",
+        "value": [
+          "coding",
+          "implementation",
+          "refactoring",
+          "bugfix"
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "CoderAgent"
+      }
+    },
+    {
+      "id": "context-discovery-routing",
+      "name": "Context Discovery Routing",
+      "version": "1.0.0",
+      "priority": 30,
+      "description": "Route context discovery to ContextScout.",
+      "tags": [
+        "context"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "OR",
+        "expressions": [
+          {
+            "type": "task_type",
+            "operator": "eq",
+            "value": "context_discovery"
+          },
+          {
+            "type": "context_files_found",
+            "operator": "eq",
+            "value": 0
+          }
+        ]
+      },
+      "action": {
+        "type": "DELEGATE",
+        "agent": "ContextScout"
+      }
+    },
+    {
+      "id": "read-only-execution",
+      "name": "Read-only Direct Execution",
+      "version": "1.0.0",
+      "priority": 10,
+      "description": "Safe read-only operations can execute directly.",
+      "tags": [
+        "readonly"
+      ],
+      "enabled": true,
+      "condition": {
+        "type": "operation_type",
+        "operator": "in",
+        "value": [
+          "read",
+          "list",
+          "glob",
+          "grep",
+          "search",
+          "question",
+          "safe_bash"
+        ]
+      },
+      "action": {
+        "type": "EXECUTE_DIRECT"
+      }
+    }
+  ],
+  "rule_groups": {
+    "mvp": {
+      "description": "Clean MVP routing rules",
+      "rule_ids": [
+        "approval-gate",
+        "test-failure-diagnosis-routing",
+        "playwright-test-routing",
+        "test-first-design-routing",
+        "ml-development-routing",
+        "mandatory-backend-routing",
+        "mandatory-frontend-routing",
+        "task-planning-routing",
+        "documentation-routing",
+        "code-review-routing",
+        "build-validation-routing",
+        "generic-coding-routing",
+        "context-discovery-routing",
+        "read-only-execution"
+      ]
+    }
+  },
+  "priority_bands": {
+    "critical": {
+      "min": 150,
+      "max": 200,
+      "description": "Safety and high-confidence specialists"
+    },
+    "high": {
+      "min": 90,
+      "max": 149,
+      "description": "Main implementation routing"
+    },
+    "normal": {
+      "min": 50,
+      "max": 89,
+      "description": "Generic specialists"
+    },
+    "low": {
+      "min": 1,
+      "max": 49,
+      "description": "Direct/read-only/system helpers"
+    }
+  }
+}

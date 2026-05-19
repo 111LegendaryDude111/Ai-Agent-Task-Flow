@@ -1,0 +1,98 @@
+{
+  "version": "1.0.0",
+  "description": "Provider-neutral source routing for repo, core context, optional memory, internal docs, and external docs.",
+  "query_types": {
+    "project_context_lookup": {
+      "primary": "memory",
+      "healthcheck": "check_database_health",
+      "lookup": [
+        "search_by_tag",
+        "retrieve_memory"
+      ],
+      "sufficient_when": {
+        "requires_project_tag": true,
+        "requires_type_tag": true,
+        "requires_exact_current_code_fact": false
+      },
+      "fallback": [
+        "recommend:/add-context",
+        "repo:verify_if_requested_or_needed"
+      ]
+    },
+    "implementation_fact": {
+      "primary": "repo",
+      "memory_role": "supplemental_only",
+      "fallback": [
+        "core_context:if_standard_related",
+        "internal_docs:if_needed"
+      ]
+    },
+    "standards_workflow_lookup": {
+      "primary": "core_context",
+      "memory_role": "supplemental_only",
+      "fallback": [
+        "external:only_if_local_missing"
+      ]
+    },
+    "internal_long_form_documentation": {
+      "primary": "internal_docs",
+      "tools": [
+        "InternalDocsScout",
+        "documentation connector"
+      ],
+      "rag_role": "optional_future_acceleration_or_replacement",
+      "fallback": [
+        "blocked:if_internal_docs_unavailable"
+      ]
+    },
+    "external_library_lookup": {
+      "primary": "external",
+      "tools": [
+        "ExternalScout",
+        "web"
+      ],
+      "fallback": [
+        "core_context:if_internal_guide_exists",
+        "repo:if_library_used_in_codebase"
+      ]
+    },
+    "durable_writeback": {
+      "target": "memory",
+      "schema": "context/core/config/memory-entry.schema.json",
+      "modes": [
+        "explicit:/add-context",
+        "automatic:verified-durable-findings"
+      ],
+      "allowed_types": [
+        "type:tech-stack",
+        "type:decision",
+        "type:pattern",
+        "type:domain",
+        "type:convention"
+      ],
+      "save_when": [
+        "verified",
+        "durable",
+        "future-useful",
+        "compact-summary",
+        "project-tagged",
+        "typed"
+      ],
+      "skip_when": [
+        "current-code-fact",
+        "raw-doc-chunks",
+        "transient-state",
+        "secrets",
+        "unverified",
+        "superseded-or-corrected-finding",
+        "low-level-implementation-trivia"
+      ],
+      "forbidden_content": [
+        "raw-doc-chunks",
+        "transient-state",
+        "secrets",
+        "unverified-implementation-details"
+      ]
+    }
+  }
+}

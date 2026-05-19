@@ -1,0 +1,53 @@
+{
+  "id": "task-cli-e2e",
+  "name": "Task CLI E2E Feature",
+  "status": "active",
+  "objective": "Проверить deterministic verify/complete и feature archive flow",
+  "context_files": [
+    "fixtures/task-management/task-cli-e2e/README.md"
+  ],
+  "reference_files": [
+    "fixtures/task-management/task-cli-e2e/README.md"
+  ],
+  "exit_criteria": [
+    "Feature verification passes",
+    "Feature is archived only after fresh verification"
+  ],
+  "verification_spec": {
+    "exit_criteria_must_be_verified": [
+      "Feature verification passes",
+      "Feature is archived only after fresh verification"
+    ],
+    "deliverables_must_exist": [
+      ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt"
+    ],
+    "deliverables_must_change": [
+      ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt"
+    ],
+    "commands": [
+      {
+        "id": "feature-probe",
+        "run": "python scripts/task_cli_e2e_probe.py feature .tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "expect_exit_code": 0
+      }
+    ],
+    "checks": [
+      {
+        "id": "feature-implemented-marker",
+        "type": "grep_present",
+        "path": ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "pattern": "IMPLEMENTED"
+      },
+      {
+        "id": "feature-no-todo",
+        "type": "grep_absent",
+        "path": ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "pattern": "TODO|FIXME"
+      }
+    ]
+  },
+  "subtask_count": 1,
+  "completed_count": 0,
+  "created_at": "2026-05-04T00:00:00Z",
+  "completed_at": null
+}

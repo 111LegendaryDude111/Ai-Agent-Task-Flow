@@ -1,0 +1,334 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "routing-ruleset-schema.v2",
+  "title": "Routing Ruleset",
+  "description": "Schema for deterministic routing rulesets, groups, and test scenarios used by orchestrators",
+  "type": "object",
+  "required": ["version", "name"],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "environment": {
+      "type": "string"
+    },
+    "last_updated": {
+      "type": "string"
+    },
+    "rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/rule" }
+    },
+    "test_scenarios": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testScenario" }
+    },
+    "rule_groups": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/ruleGroup"
+      }
+    },
+    "priority_bands": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/priorityBand"
+      }
+    }
+  },
+  "anyOf": [
+    { "required": ["rules"] },
+    { "required": ["test_scenarios"] }
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "required": ["id", "priority", "condition", "action"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "description": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "condition": {
+          "$ref": "#/$defs/condition"
+        },
+        "action": {
+          "$ref": "#/$defs/action"
+        },
+        "metadata": {
+          "type": "object",
+          "properties": {
+            "author": { "type": "string" },
+            "created": { "type": "string", "format": "date-time" },
+            "updated": { "type": "string", "format": "date-time" },
+            "deprecated": { "type": "boolean" },
+            "replacement_rule_id": { "type": "string" },
+            "reason": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "ruleGroup": {
+      "type": "object",
+      "required": ["description", "rule_ids"],
+      "properties": {
+        "description": { "type": "string" },
+        "rule_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "priorityBand": {
+      "type": "object",
+      "required": ["min", "max", "description"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 1 },
+        "max": { "type": "integer", "minimum": 1 },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "testScenario": {
+      "type": "object",
+      "required": ["id", "name", "input", "expected_action"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$"
+        },
+        "name": {
+          "type": "string"
+        },
+        "input": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "expected_rule": {
+          "type": "string"
+        },
+        "expected_action": {
+          "$ref": "#/$defs/actionExpectation"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "actionExpectation": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DELEGATE",
+            "DELEGATE_WITH_CONTEXT",
+            "EXECUTE_DIRECT",
+            "SKIP",
+            "REQUEST_APPROVAL",
+            "FAIL",
+            "CHAIN"
+          ]
+        },
+        "agent": {
+          "type": "string"
+        },
+        "skill": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "condition": {
+      "oneOf": [
+        { "$ref": "#/$defs/andOrXorCondition" },
+        { "$ref": "#/$defs/notCondition" },
+        { "$ref": "#/$defs/atomicCondition" }
+      ]
+    },
+    "andOrXorCondition": {
+      "type": "object",
+      "required": ["type", "expressions"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["AND", "OR", "XOR"]
+        },
+        "expressions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" },
+          "minItems": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "notCondition": {
+      "type": "object",
+      "required": ["type", "expression"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "NOT"
+        },
+        "expression": {
+          "$ref": "#/$defs/condition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "atomicCondition": {
+      "type": "object",
+      "required": ["type", "operator", "value"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "repo_type",
+            "file_extension",
+            "file_path",
+            "task_type",
+            "operation_type",
+            "context_contains",
+            "has_dependency",
+            "parallel_safe",
+            "is_test_file",
+            "is_config_file",
+            "is_documentation",
+            "repo_path_pattern",
+            "session_exists",
+            "memory_available",
+            "context_files_found",
+            "branch_status",
+            "custom"
+          ]
+        },
+        "operator": {
+          "type": "string",
+          "enum": [
+            "eq",
+            "neq",
+            "in",
+            "not_in",
+            "contains",
+            "not_contains",
+            "starts_with",
+            "ends_with",
+            "matches_regex",
+            "gt",
+            "gte",
+            "lt",
+            "lte",
+            "exists",
+            "not_exists",
+            "is_true",
+            "is_false"
+          ]
+        },
+        "value": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "integer" },
+            { "type": "boolean" },
+            { "type": "array", "items": { "type": ["string", "integer", "boolean"] } }
+          ]
+        },
+        "field": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "action": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "DELEGATE",
+            "DELEGATE_WITH_CONTEXT",
+            "EXECUTE_DIRECT",
+            "SKIP",
+            "REQUEST_APPROVAL",
+            "FAIL",
+            "CHAIN"
+          ]
+        },
+        "agent": {
+          "type": "string"
+        },
+        "skill": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "fallback_agent": {
+          "type": "string"
+        },
+        "context_paths": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "pre_action": {
+          "$ref": "#/$defs/action"
+        },
+        "post_action": {
+          "$ref": "#/$defs/action"
+        },
+        "error_handling": {
+          "type": "object",
+          "properties": {
+            "on_failure": {
+              "type": "string",
+              "enum": ["retry", "fallback", "fail", "skip"]
+            },
+            "max_retries": { "type": "integer", "minimum": 0 },
+            "fallback_agent": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

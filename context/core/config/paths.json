@@ -1,0 +1,7 @@
+{
+  "description": "Provider-neutral context path configuration.",
+  "paths": {
+    "local": "context",
+    "global": false
+  }
+}

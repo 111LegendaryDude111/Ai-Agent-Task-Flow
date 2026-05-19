@@ -1,0 +1,2 @@
+# Python dependencies for routing rules validation
+jsonschema>=4.17.0

@@ -1,0 +1,55 @@
+{
+  "id": "task-cli-e2e-01",
+  "seq": "01",
+  "title": "Создать implementation marker",
+  "status": "in_progress",
+  "depends_on": [],
+  "parallel": false,
+  "suggested_agent": "CoderAgent",
+  "context_files": [
+    "fixtures/task-management/task-cli-e2e/README.md"
+  ],
+  "reference_files": [
+    "fixtures/task-management/task-cli-e2e/README.md"
+  ],
+  "acceptance_criteria": [
+    "Implementation file contains IMPLEMENTED marker",
+    "Implementation file does not contain TODO or FIXME"
+  ],
+  "deliverables": [
+    ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt"
+  ],
+  "verification_spec": {
+    "deliverables_must_exist": [
+      ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt"
+    ],
+    "deliverables_must_change": [
+      ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt"
+    ],
+    "commands": [
+      {
+        "id": "subtask-probe",
+        "run": "python scripts/task_cli_e2e_probe.py subtask .tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "expect_exit_code": 0
+      }
+    ],
+    "checks": [
+      {
+        "id": "subtask-implemented-marker",
+        "type": "grep_present",
+        "path": ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "pattern": "IMPLEMENTED"
+      },
+      {
+        "id": "subtask-no-todo",
+        "type": "grep_absent",
+        "path": ".tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "pattern": "TODO|FIXME"
+      }
+    ]
+  },
+  "agent_id": "task-cli-e2e-runner",
+  "started_at": "2026-05-04T00:00:00Z",
+  "completed_at": null,
+  "completion_summary": null
+}

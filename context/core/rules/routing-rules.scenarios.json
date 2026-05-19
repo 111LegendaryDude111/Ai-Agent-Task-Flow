@@ -1,0 +1,198 @@
+{
+  "$schema": "./routing-rules.schema.json",
+  "version": "1.0.0",
+  "name": "Agentic Flow MVP Routing Scenarios",
+  "description": "Scenario tests for clean MVP routing.",
+  "last_updated": "2026-05-18",
+  "test_scenarios": [
+    {
+      "id": "scenario-001",
+      "name": "Dangerous bash operation requires approval",
+      "input": {
+        "operation_type": "dangerous_bash"
+      },
+      "expected_rule": "approval-gate",
+      "expected_action": {
+        "type": "REQUEST_APPROVAL"
+      }
+    },
+    {
+      "id": "scenario-002",
+      "name": "Safe read-only bash operation executes directly",
+      "input": {
+        "operation_type": "safe_bash"
+      },
+      "expected_rule": "read-only-execution",
+      "expected_action": {
+        "type": "EXECUTE_DIRECT"
+      }
+    },
+    {
+      "id": "scenario-003",
+      "name": "TSX routes to FrontendDeveloper",
+      "input": {
+        "repo_type": "js",
+        "file_extension": ".tsx",
+        "task_type": "implementation"
+      },
+      "expected_rule": "mandatory-frontend-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "FrontendDeveloper"
+      }
+    },
+    {
+      "id": "scenario-004",
+      "name": "Java routes to JavaDeveloper",
+      "input": {
+        "repo_type": "java",
+        "file_extension": ".java",
+        "task_type": "implementation"
+      },
+      "expected_rule": "mandatory-backend-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "JavaDeveloper"
+      }
+    },
+    {
+      "id": "scenario-005",
+      "name": "Playwright test routes to PlaywrightTestGenerator",
+      "input": {
+        "task_type": "playwright_test",
+        "file_extension": ".spec.ts"
+      },
+      "expected_rule": "playwright-test-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "PlaywrightTestGenerator"
+      }
+    },
+    {
+      "id": "scenario-006",
+      "name": "Complex coding routes to TaskManager",
+      "input": {
+        "task_type": "coding",
+        "context_contains": "complex feature"
+      },
+      "expected_rule": "task-planning-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "TaskManager"
+      }
+    },
+    {
+      "id": "scenario-007",
+      "name": "Documentation routes to DocWriter",
+      "input": {
+        "task_type": "documentation",
+        "file_path": "docs/api.md"
+      },
+      "expected_rule": "documentation-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "DocWriter"
+      }
+    },
+    {
+      "id": "scenario-008",
+      "name": "Review routes to CodeReviewer",
+      "input": {
+        "task_type": "code_review",
+        "context_contains": "review changes"
+      },
+      "expected_rule": "code-review-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "CodeReviewer"
+      }
+    },
+    {
+      "id": "scenario-009",
+      "name": "Build validation routes to BuildAgent",
+      "input": {
+        "task_type": "build_validation"
+      },
+      "expected_rule": "build-validation-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "BuildAgent"
+      }
+    },
+    {
+      "id": "scenario-010",
+      "name": "Generic implementation routes to CoderAgent",
+      "input": {
+        "task_type": "bugfix",
+        "repo_type": "unknown"
+      },
+      "expected_rule": "generic-coding-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "CoderAgent"
+      }
+    },
+    {
+      "id": "scenario-011",
+      "name": "Context discovery routes to ContextScout",
+      "input": {
+        "task_type": "context_discovery"
+      },
+      "expected_rule": "context-discovery-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "ContextScout"
+      }
+    },
+    {
+      "id": "scenario-012",
+      "name": "Test-first design routes to TestDesigner",
+      "input": {
+        "task_type": "test_first_design",
+        "context_contains": "test-first workflow"
+      },
+      "expected_rule": "test-first-design-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "TestDesigner"
+      }
+    },
+    {
+      "id": "scenario-013",
+      "name": "Failing test output routes to TestDiagnostician",
+      "input": {
+        "task_type": "test_failure_diagnosis",
+        "context_contains": "failing test output"
+      },
+      "expected_rule": "test-failure-diagnosis-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "TestDiagnostician"
+      }
+    },
+    {
+      "id": "scenario-014",
+      "name": "ML implementation routes to MLDeveloper",
+      "input": {
+        "task_type": "ml_implementation",
+        "context_contains": "model training with data leakage checks"
+      },
+      "expected_rule": "ml-development-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "MLDeveloper"
+      }
+    },
+    {
+      "id": "scenario-015",
+      "name": "Unknown unmatched work fails",
+      "input": {
+        "task_type": "unknown_work",
+        "operation_type": "unknown"
+      },
+      "expected_action": {
+        "type": "FAIL"
+      }
+    }
+  ]
+}

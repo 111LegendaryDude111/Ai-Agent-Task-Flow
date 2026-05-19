@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "name": "Memory Routing Policy Scenarios",
+  "description": "Provider-neutral source-routing scenarios.",
+  "test_scenarios": [
+    {
+      "id": "memory-scenario-001",
+      "name": "Project context lookup uses Memory Service with strict sufficiency",
+      "query_type": "project_context_lookup",
+      "expected": {
+        "primary": "memory",
+        "healthcheck": "check_database_health",
+        "lookup_includes": [
+          "search_by_tag",
+          "retrieve_memory"
+        ],
+        "sufficient_when": {
+          "requires_project_tag": true,
+          "requires_type_tag": true,
+          "requires_exact_current_code_fact": false
+        },
+        "fallback_includes": [
+          "recommend:/add-context",
+          "repo:verify_if_requested_or_needed"
+        ]
+      }
+    },
+    {
+      "id": "memory-scenario-002",
+      "name": "Implementation facts come from repo",
+      "query_type": "implementation_fact",
+      "expected": {
+        "primary": "repo",
+        "memory_role": "supplemental_only",
+        "fallback_includes": [
+          "core_context:if_standard_related",
+          "internal_docs:if_needed"
+        ]
+      }
+    },
+    {
+      "id": "memory-scenario-003",
+      "name": "Standards come from core context",
+      "query_type": "standards_workflow_lookup",
+      "expected": {
+        "primary": "core_context",
+        "memory_role": "supplemental_only",
+        "fallback_includes": [
+          "external:only_if_local_missing"
+        ]
+      }
+    },
+    {
+      "id": "memory-scenario-004",
+      "name": "Internal docs are provider-neutral",
+      "query_type": "internal_long_form_documentation",
+      "expected": {
+        "primary": "internal_docs",
+        "tools_include": [
+          "InternalDocsScout",
+          "documentation connector"
+        ],
+        "rag_role": "optional_future_acceleration_or_replacement",
+        "fallback_includes": [
+          "blocked:if_internal_docs_unavailable"
+        ]
+      }
+    },
+    {
+      "id": "memory-scenario-005",
+      "name": "External library lookups use external docs",
+      "query_type": "external_library_lookup",
+      "expected": {
+        "primary": "external",
+        "tools_include": [
+          "ExternalScout",
+          "web"
+        ],
+        "fallback_includes": [
+          "core_context:if_internal_guide_exists",
+          "repo:if_library_used_in_codebase"
+        ]
+      }
+    },
+    {
+      "id": "memory-scenario-006",
+      "name": "Durable writeback follows schema",
+      "query_type": "durable_writeback",
+      "expected": {
+        "target": "memory",
+        "schema": "context/core/config/memory-entry.schema.json",
+        "modes_includes": [
+          "explicit:/add-context",
+          "automatic:verified-durable-findings"
+        ],
+        "allowed_types_match_memory_schema": true,
+        "save_when_includes": [
+          "verified",
+          "durable",
+          "future-useful",
+          "compact-summary",
+          "project-tagged",
+          "typed"
+        ],
+        "skip_when_includes": [
+          "current-code-fact",
+          "raw-doc-chunks",
+          "transient-state",
+          "secrets",
+          "unverified",
+          "superseded-or-corrected-finding",
+          "low-level-implementation-trivia"
+        ],
+        "forbidden_content_includes": [
+          "raw-doc-chunks",
+          "transient-state",
+          "secrets",
+          "unverified-implementation-details"
+        ]
+      }
+    },
+    {
+      "id": "memory-scenario-007",
+      "name": "Verified tech stack summary can be saved",
+      "query_type": "durable_writeback",
+      "candidate": {
+        "content_kind": "tech-stack",
+        "primary_type": "type:tech-stack",
+        "verified": true,
+        "durable": true,
+        "future_useful": true,
+        "compact_summary": true,
+        "project_tagged": true,
+        "typed": true
+      },
+      "expected_decision": "save"
+    },
+    {
+      "id": "memory-scenario-008",
+      "name": "Current exact dependency version is not durable",
+      "query_type": "durable_writeback",
+      "candidate": {
+        "content_kind": "current-code-fact",
+        "primary_type": "type:tech-stack",
+        "verified": true,
+        "durable": false,
+        "future_useful": false,
+        "compact_summary": true,
+        "project_tagged": true,
+        "typed": true
+      },
+      "expected_decision": "skip"
+    },
+    {
+      "id": "memory-scenario-009",
+      "name": "Secrets are never saved",
+      "query_type": "durable_writeback",
+      "candidate": {
+        "content_kind": "secrets",
+        "primary_type": "type:domain",
+        "verified": true,
+        "durable": true,
+        "future_useful": false,
+        "compact_summary": false,
+        "project_tagged": true,
+        "typed": true
+      },
+      "expected_decision": "skip"
+    }
+  ]
+}

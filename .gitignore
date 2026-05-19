@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# Local/temp files
+.tmp/
+docs/temp.md
+.DS_Store
+*.log
+*.tmp
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Build/test outputs
+coverage/
+dist/
+build/
+
+# Editor/IDE
+.idea/
+.vscode/
+
+# Repository docs intentionally tracked even if globally ignored
+!AGENTS.md
+!PDR.md

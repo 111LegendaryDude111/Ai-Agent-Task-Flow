@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://opencode.local/schemas/memory-entry.schema.json",
+  "title": "OpenCode Memory Entry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["content", "tags", "memory_type", "metadata"],
+  "properties": {
+    "content": {
+      "type": "string",
+      "minLength": 20,
+      "description": "Compact durable summary. Do not store raw documentation chunks or transient chatter."
+    },
+    "tags": {
+      "type": "array",
+      "minItems": 2,
+      "items": { "type": "string", "minLength": 2 },
+      "allOf": [
+        { "contains": { "type": "string", "pattern": "^project:[A-Za-z0-9._-]+$" } },
+        {
+          "contains": {
+            "enum": ["type:tech-stack", "type:decision", "type:pattern", "type:domain", "type:convention"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "memory_type": { "type": "string", "enum": ["note"] },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project", "category", "source", "confidence", "updated_at"],
+      "properties": {
+        "project": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "source": {
+          "type": "string",
+          "enum": ["memory", "repo-analysis", "repo-verified", "core-context", "confluence", "rag", "external-docs", "user-confirmed"]
+        },
+        "confidence": { "type": "string", "enum": ["verified", "derived"] },
+        "updated_at": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "version": { "type": "string" },
+        "scope": { "type": "string", "enum": ["project", "shared", "user"] }
+      }
+    }
+  }
+}
