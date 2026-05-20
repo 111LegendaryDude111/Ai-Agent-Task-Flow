@@ -1,5 +1,25 @@
 {
+  "name": "agentic-flow-playbook",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agentic Flow Playbook runtime and validation suite for OpenCode.",
+  "scripts": {
+    "validate:routing": "python3 scripts/validate_routing_rules.py --context-root context/core",
+    "validate:memory": "python3 scripts/validate_memory_routing_policy.py --config-root context/core/config",
+    "lint:json": "python3 scripts/lint_json.py --context-root context/core",
+    "coverage:routing": "python3 scripts/generate_coverage_report.py --context-root context/core",
+    "test:task-cli": "python3 scripts/run_task_cli_e2e.py",
+    "scan:secrets": "python3 scripts/scan_secrets.py",
+    "validate:audit": "python3 scripts/validate_audit_events.py --audit-root .tmp/audit --allow-empty",
+    "task-cli": "ts-node scripts/task-cli.ts",
+    "validate": "npm run scan:secrets && npm run validate:routing && npm run validate:memory && npm run lint:json && npm run coverage:routing && npm run test:task-cli && npm run validate:audit"
+  },
   "dependencies": {
     "@opencode-ai/plugin": "1.15.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
   }
 }

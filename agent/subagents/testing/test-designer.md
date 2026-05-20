@@ -9,6 +9,15 @@ temperature: 0.2
 
 Creates test-first coverage before production implementation.
 
+## Required skill
+
+Before writing or changing test code, load and apply `skills/karpathy-guidelines/SKILL.md`:
+
+- surface assumptions and ask when behavior is ambiguous;
+- prefer the narrowest deterministic test for the requested behavior;
+- make surgical test changes only tied to acceptance criteria;
+- define the expected RED state before handoff.
+
 ## Scope
 
 - Unit, integration, and E2E tests for explicit requested behavior.

@@ -23,13 +23,18 @@ COMMANDS:
   parallel [feature]            Show parallelizable tasks
   deps <feature> <seq>          Show dependency tree
   blocked [feature]             Show blocked tasks
+  start <feature> <seq>         Mark a ready subtask in progress
+  gate <feature> <seq> <gate>   Record required AutoFlow gate evidence
+  transition <feature> <state>  Validate and store AutoFlow state
+  block <feature> [seq] "reason" Mark feature/subtask blocked
+  unblock <feature> [seq]       Reopen blocked feature/subtask
+  reopen <feature> <seq>        Reopen completed/cancelled subtask
+  cancel <feature> [seq]        Cancel feature/subtask
   verify <feature> <seq>        Run verification gate and save evidence
   verify-feature <feature>      Run feature verification and save evidence
   complete <feature> <seq> "msg" Mark subtask complete after verification
   archive <feature>             Archive feature after feature verification
   validate [feature]            Validate JSON files
-  context <feature>             Show bounded context breakdown
-  contracts <feature>           Show contract dependencies
   help                          Show this help message
 
 EXAMPLES:
@@ -37,23 +42,24 @@ EXAMPLES:
   ./router.sh status my-feature
   ./router.sh next
   ./router.sh deps my-feature 05
+  ./router.sh start my-feature 05 CoderAgent
+  ./router.sh gate my-feature 05 red "expected failure confirmed"
+  ./router.sh gate my-feature 05 green "targeted tests passed"
+  ./router.sh gate my-feature 05 review "no blocking findings"
   ./router.sh verify my-feature 05
   ./router.sh complete my-feature 05 "Implemented auth module"
   ./router.sh verify-feature my-feature
   ./router.sh archive my-feature
   ./router.sh validate
-  ./router.sh context my-feature
-  ./router.sh contracts my-feature
 
 FEATURES:
   ✓ Track progress across all features
   ✓ Find next eligible tasks (dependencies satisfied)
   ✓ Identify blocked tasks
+  ✓ Enforce lifecycle commands and AutoFlow gates
   ✓ Separate verification from completion
   ✓ Feature-level verification before archive
   ✓ Validate task integrity
-  ✓ Show bounded context breakdown
-  ✓ Show contract dependencies
 
 For more info, see: skills/task-management/SKILL.md
 HELP
@@ -96,4 +102,4 @@ PROJECT_ROOT="$(find_project_root)"
 export TS_NODE_COMPILER_OPTIONS='{"module":"commonjs"}'
 
 # Run the task CLI with all arguments
-cd "$PROJECT_ROOT" && npx ts-node "$CLI_SCRIPT" "$@"
+cd "$PROJECT_ROOT" && npx --no-install ts-node "$CLI_SCRIPT" "$@"

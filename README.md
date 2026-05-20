@@ -1,77 +1,69 @@
 # Agentic Flow Playbook MVP
 
-Коротко: это заготовка для управляемой работы AI-агентов в OpenCode. Пользователь дает задачу, главный агент Synapse собирает контекст, выбирает нужного подагента по правилам и автономно правит файлы внутри проекта, но просит подтверждение для shell/delete и других опасных действий.
+Статус: **alpha / internal MVP**. Это переносимый playbook для управляемой работы AI-агентов в OpenCode: context-first, deterministic routing, delegated execution, validation и audit trail.
 
-## Как устроен проект
+## Golden path
 
-- `opencode.jsonc` - конфиг OpenCode: OpenRouter-модель по умолчанию, локальный Ollama fallback и агенты.
-- `agent/core/sfa-synapse.md` - инструкция для главного агента Synapse.
-- `agent/subagents/` - инструкции для специализированных агентов, например ML-разработчика и тестовых агентов.
-- `context/core/rules/` - JSON-правила маршрутизации задач.
-- `context/core/config/` - правила работы с памятью и схемы для сохранения знаний.
-- `scripts/` - проверки, генерация отчетов и CLI для задач.
-- `docs/LOCAL_MODEL_SETUP.md` - как настроить локальную модель через Ollama.
+1. Скопируйте portable config:
+
+   ```bash
+   cp opencode.jsonc.example opencode.jsonc
+   ```
+
+2. Задайте секреты только через env или локальный `.env` на своей машине:
+
+   ```bash
+   export OPENROUTER_API_KEY="..."
+   ```
+
+3. Запустите Synapse:
+
+   ```bash
+   opencode run --agent synapse 'Опиши задачу здесь'
+   ```
+
+4. Проверьте репозиторий одной командой:
+
+   ```bash
+   npm run validate
+   ```
 
 ## Как это работает
 
-1. Пользователь описывает задачу.
-2. Synapse определяет тип задачи: документация, тесты, ML, frontend, backend и т.д.
-3. Проект читает правила из `context/core/rules/routing-rules.json`.
-4. `write`/`edit` внутри проекта разрешены для автономной работы matched subagent.
-5. Safe read-only bash (`pwd`, `ls`, `find`, `rg`, `grep`, `git status`, `git diff`) выполняется без подтверждения; для остального `bash`, удаления, dependency installs, network operations, destructive git, изменений вне проекта и секретов агент просит подтверждение.
-6. Перед завершением запускаются проверки. Для задач из task-flow используется `scripts/task-cli.ts verify` и `complete`.
-
-Главная идея простая: меньше хаоса, больше повторяемости. Один и тот же ввод должен вести к одному и тому же маршруту.
-
-## Как использовать
-
-Нужны OpenCode и ключ OpenRouter. Локальный Ollama можно оставить как fallback.
-
-```bash
-export OPENROUTER_API_KEY="..."
-opencode run --agent synapse 'Опиши задачу здесь'
-```
-
-По умолчанию используется `openrouter/deepseek/deepseek-v4-flash`. Локальная настройка Ollama описана в `docs/LOCAL_MODEL_SETUP.md`.
-
-## Команды
-
-Проверить правила маршрутизации:
-
-```bash
-python3 scripts/validate_routing_rules.py --context-root context/core
-```
-
-Проверить политику памяти:
-
-```bash
-python3 scripts/validate_memory_routing_policy.py --config-root context/core/config
-```
-
-Проверить JSON-файлы:
-
-```bash
-python3 scripts/lint_json.py --context-root context/core
-```
-
-Сгенерировать отчет по покрытию правил сценариями:
-
-```bash
-python3 scripts/generate_coverage_report.py --context-root context/core
-```
-
-Проверить task CLI на e2e-фикстуре:
-
-```bash
-python3 scripts/run_task_cli_e2e.py
-```
-
-Создать patched Ollama-модель для OpenCode, если она отсутствует:
-
-```bash
-python3 scripts/create_ollama_opencode_model.py
-```
+- `synapse` — orchestrator. Он собирает контекст и маршрутизирует, но не пишет production code напрямую.
+- Matched subagent выполняет изменения в своей зоне ответственности.
+- Routing rules живут в `context/core/rules/routing-rules.json`.
+- Task-flow state живет в `.tmp/tasks/{feature}/task.json` и `subtask_NN.json`.
+- Audit JSONL пишется в `.tmp/audit/routing/{date}/{session}.jsonl`.
 
 ## Безопасность
 
-Не храните токены и секреты в репозитории. API-ключи задавайте через переменные окружения, например `OPENROUTER_API_KEY`.
+- Secrets не хранятся в репозитории. Используйте env vars: `OPENROUTER_API_KEY`, `BRAVE_API_KEY`, `OBSIDIAN_VAULT_PATH`.
+- Optional MCP servers выключены по умолчанию. Включайте их локально после установки нужных инструментов и env vars.
+- Safe read-only bash allowlist: `pwd`, `ls *`, `rg *`, `grep *`, `git status*`, `git diff*`.
+- Остальной shell, delete, dependency install, network, destructive git, outside-repo и secrets/env операции требуют approval.
+- Approval снимает только safety gate; Synapse всё равно обязан повторить routing и делегировать matched subagent.
+
+## Валидация
+
+```bash
+npm run validate
+```
+
+Команда запускает secret/path scan, routing validation, memory policy validation, JSON lint, routing coverage, Task CLI E2E и audit validator.
+
+## Документация
+
+- `docs/index.md` — единая точка входа.
+- `docs/HOW_IT_WORKS.md` — runtime flow.
+- `docs/ARCHITECTURE.md` — архитектурные границы MVP.
+- `docs/ONBOARDING.md` — первый запуск и сценарии.
+- `docs/DEVELOPER_EXTENSION_GUIDE.md` — расширение subagents/routing.
+- `docs/PROVIDER_DATA_POLICY.md` — provider/data classification policy.
+- `docs/ROUTING_ROADMAP.md` — roadmap routing domains.
+
+## Known limitations
+
+- Это internal alpha, а не fully autonomous platform.
+- External providers требуют явного env setup и data classification policy.
+- Memory/internal docs connectors optional; при недоступности workflow должен останавливаться в `blocked`.

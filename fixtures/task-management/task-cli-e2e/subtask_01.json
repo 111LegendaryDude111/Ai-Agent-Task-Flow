@@ -51,5 +51,28 @@
   "agent_id": "task-cli-e2e-runner",
   "started_at": "2026-05-04T00:00:00Z",
   "completed_at": null,
-  "completion_summary": null
+  "completion_summary": null,
+  "autoflow": {
+    "state": "verify_subtask",
+    "gates": {
+      "context_discovery": true,
+      "red": true,
+      "green": true,
+      "review": true
+    },
+    "history": [
+      {
+        "from": null,
+        "to": "write_failing_test",
+        "at": "2026-05-04T00:00:00Z",
+        "reason": "fixture start"
+      },
+      {
+        "from": "review",
+        "to": "verify_subtask",
+        "at": "2026-05-04T00:00:01Z",
+        "reason": "fixture gates recorded"
+      }
+    ]
+  }
 }

@@ -31,4 +31,4 @@ Required workflow:
 8. Continue until the goal is done or the state machine reaches `blocked`.
 9. Never claim completion before verification succeeds.
 
-Safe read-only bash commands from the allowlist (`pwd`, `ls *`, `find *`, `rg *`, `grep *`, `git status*`, `git diff*`) may run without approval. Stop and ask for approval before other `bash`, delete operations, dependency installs, network operations, destructive git operations, edits outside the target repository, or changes to secrets/env files. Edits and writes inside the target repository are allowed after task approval.
+Safe read-only bash commands from the allowlist (`pwd`, `ls *`, `rg *`, `grep *`, `git status*`, `git diff*`) may run without approval. Stop and ask for approval before other `bash`, delete operations, dependency installs, network operations, destructive git operations, edits outside the target repository, or changes to secrets/env files. Edits and writes inside the target repository are allowed for matched subagents after task approval.

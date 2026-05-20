@@ -49,5 +49,19 @@
   "subtask_count": 1,
   "completed_count": 0,
   "created_at": "2026-05-04T00:00:00Z",
-  "completed_at": null
+  "completed_at": null,
+  "autoflow": {
+    "state": "verify_subtask",
+    "gates": {
+      "context_discovery": true
+    },
+    "history": [
+      {
+        "from": null,
+        "to": "intake",
+        "at": "2026-05-04T00:00:00Z",
+        "reason": "fixture intake"
+      }
+    ]
+  }
 }

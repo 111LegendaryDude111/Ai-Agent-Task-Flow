@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "task.schema.json",
+  "title": "AutoFlow Task Artifact",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "status",
+    "objective",
+    "context_files",
+    "exit_criteria",
+    "verification_spec",
+    "subtask_count",
+    "completed_count",
+    "created_at",
+    "completed_at"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "name": { "type": "string" },
+    "status": { "type": "string", "enum": ["active", "completed", "blocked", "archived", "cancelled"] },
+    "objective": { "type": "string" },
+    "context_files": { "type": "array" },
+    "reference_files": { "type": "array" },
+    "exit_criteria": { "type": "array", "items": { "type": "string" } },
+    "verification_spec": { "type": "object" },
+    "subtask_count": { "type": "number" },
+    "completed_count": { "type": "number" },
+    "created_at": { "type": "string" },
+    "completed_at": { "type": ["string", "null"] },
+    "verification": { "type": "object" },
+    "autoflow": { "type": "object" },
+    "blocked_reason": { "type": "string" },
+    "cancelled_reason": { "type": "string" }
+  },
+  "additionalProperties": true
+}

@@ -45,23 +45,25 @@ def setup_fixture() -> None:
         check=True,
         capture_output=True,
         text=True,
+        timeout=15,
     )
+
+
+def task_cli_command(*args: str) -> list[str]:
+    if sys.platform == "win32":
+        local_ts_node = ROOT / "node_modules" / ".bin" / "ts-node.cmd"
+    else:
+        local_ts_node = ROOT / "node_modules" / ".bin" / "ts-node"
+
+    if local_ts_node.exists():
+        return [str(local_ts_node), str(TASK_CLI), *args]
+
+    npx_bin = "npx.cmd" if sys.platform == "win32" else "npx"
+    return [npx_bin, "--no-install", "ts-node", str(TASK_CLI), *args]
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    env["TS_NODE_COMPILER_OPTIONS"] = '{"module":"commonjs"}'
-
-    npx_bin = "npx.cmd" if sys.platform == "win32" else "npx"
-    command = [npx_bin, "ts-node", str(TASK_CLI), *args]
-
-    result = subprocess.run(
-        command,
-        cwd=TEST_PROJECT_DIR,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    result = run_cli_raw(*args)
 
     if result.returncode != 0:
         print(result.stdout)
@@ -69,6 +71,39 @@ def run_cli(*args: str) -> subprocess.CompletedProcess[str]:
         raise RuntimeError(f"CLI command failed: {' '.join(args)}")
 
     return result
+
+
+def run_cli_raw(*args: str) -> subprocess.CompletedProcess[str]:
+    env = os.environ.copy()
+    env["TS_NODE_COMPILER_OPTIONS"] = '{"module":"commonjs"}'
+    env["TASK_CLI_PLAYBOOK_ROOT"] = str(ROOT)
+    command = task_cli_command(*args)
+
+    return subprocess.run(
+        command,
+        cwd=TEST_PROJECT_DIR,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=45,
+    )
+
+
+def assert_invalid_task_files_fail_validation() -> None:
+    invalid_feature = "invalid-task-cli"
+    invalid_dir = TASKS_DIR / invalid_feature
+    invalid_dir.mkdir(parents=True, exist_ok=True)
+    (invalid_dir / "task.json").write_text(json.dumps({"id": invalid_feature}), encoding="utf-8")
+
+    result = run_cli_raw("validate", invalid_feature)
+    shutil.rmtree(invalid_dir)
+
+    if result.returncode == 0:
+        raise RuntimeError("Expected invalid task validation to fail")
+    if "schema missing required field" not in result.stdout:
+        print(result.stdout)
+        print(result.stderr)
+        raise RuntimeError("Invalid task validation did not report schema errors")
 
 
 def assert_archived_state() -> None:
@@ -99,6 +134,7 @@ def main() -> int:
 
     try:
         run_cli("validate", FEATURE)
+        assert_invalid_task_files_fail_validation()
         run_cli("verify", FEATURE, "01")
         run_cli("complete", FEATURE, "01", "Implemented deterministic e2e fixture")
         run_cli("validate", FEATURE)

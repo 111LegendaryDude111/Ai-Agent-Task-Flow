@@ -10,6 +10,13 @@
  *   parallel [feature]            - Show parallelizable tasks ready to run
  *   deps <feature> <seq>          - Show dependency tree for a task
  *   blocked [feature]             - Show blocked tasks and why
+ *   start <feature> <seq>         - Mark a dependency-ready subtask in progress
+ *   gate <feature> <seq> <gate>   - Record required AutoFlow gate evidence
+ *   transition <feature> <state>  - Validate and store an AutoFlow state transition
+ *   block <feature> [seq] "reason" - Mark a feature or subtask blocked
+ *   unblock <feature> [seq]       - Reopen a blocked feature or subtask
+ *   reopen <feature> <seq>        - Reopen completed/cancelled subtask
+ *   cancel <feature> [seq] [reason] - Cancel a feature or subtask
  *   verify <feature> <seq>        - Run verification gate and save evidence
  *   verify-feature <feature>      - Run feature-level verification and save evidence
  *   complete <feature> <seq> "summary" - Mark task completed after successful verification
@@ -40,8 +47,14 @@ function findProjectRoot(): string {
 }
 
 const PROJECT_ROOT = findProjectRoot();
+const PLAYBOOK_ROOT = process.env.TASK_CLI_PLAYBOOK_ROOT || PROJECT_ROOT;
 const TASKS_DIR = path.join(PROJECT_ROOT, '.tmp', 'tasks');
 const COMPLETED_DIR = path.join(TASKS_DIR, 'completed');
+const TASK_SCHEMA_PATH = path.join(PLAYBOOK_ROOT, 'context', 'core', 'task-management', 'schemas', 'task.schema.json');
+const SUBTASK_SCHEMA_PATH = path.join(PLAYBOOK_ROOT, 'context', 'core', 'task-management', 'schemas', 'subtask.schema.json');
+const AUTO_FLOW_STATE_MACHINE_PATH = path.join(PLAYBOOK_ROOT, 'context', 'core', 'workflows', 'auto-flow-state-machine.json');
+const REQUIRED_AUTOFLOW_GATES = ['context_discovery', 'red', 'green', 'review'];
+const AUDIT_ROOT = path.join(PROJECT_ROOT, '.tmp', 'audit', 'routing');
 
 type ContextReference = string | {
   path: string;
@@ -49,10 +62,21 @@ type ContextReference = string | {
   reason?: string;
 };
 
+interface AutoFlowState {
+  state: string;
+  gates?: Record<string, boolean>;
+  history?: {
+    from: string | null;
+    to: string;
+    at: string;
+    reason?: string;
+  }[];
+}
+
 interface Task {
   id: string;
   name: string;
-  status: 'active' | 'completed' | 'blocked' | 'archived';
+  status: 'active' | 'completed' | 'blocked' | 'archived' | 'cancelled';
   objective: string;
   context_files: ContextReference[];
   reference_files?: ContextReference[];
@@ -63,6 +87,9 @@ interface Task {
   created_at: string;
   completed_at: string | null;
   verification?: Verification;
+  autoflow?: AutoFlowState;
+  blocked_reason?: string;
+  cancelled_reason?: string;
 }
 
 interface Verification {
@@ -129,7 +156,7 @@ interface Subtask {
   id: string;
   seq: string;
   title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'blocked';
+  status: 'pending' | 'in_progress' | 'completed' | 'blocked' | 'cancelled';
   depends_on: string[];
   parallel: boolean;
   context_files: ContextReference[];
@@ -143,6 +170,9 @@ interface Subtask {
   completed_at: string | null;
   completion_summary: string | null;
   verification?: Verification;
+  autoflow?: AutoFlowState;
+  blocked_reason?: string;
+  cancelled_reason?: string;
 }
 
 // Helpers
@@ -179,6 +209,171 @@ function saveSubtask(feature: string, subtask: Subtask): void {
 function saveTask(feature: string, task: Task): void {
   const taskPath = path.join(TASKS_DIR, feature, 'task.json');
   fs.writeFileSync(taskPath, JSON.stringify(task, null, 2));
+}
+
+function loadJsonFile(filePath: string): any | null {
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+  return JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+}
+
+function validateAgainstSimpleSchema(value: any, schema: any, pathLabel: string): string[] {
+  const errors: string[] = [];
+
+  const matchesType = (candidate: any, expectedType: any): boolean => {
+    const expectedTypes = Array.isArray(expectedType) ? expectedType : [expectedType];
+    return expectedTypes.some((typeName: string) => {
+      if (typeName === 'array') return Array.isArray(candidate);
+      if (typeName === 'null') return candidate === null;
+      if (typeName === 'number') return typeof candidate === 'number' && Number.isFinite(candidate);
+      return typeof candidate === typeName;
+    });
+  };
+
+  for (const field of schema.required || []) {
+    if (!Object.prototype.hasOwnProperty.call(value, field)) {
+      errors.push(`${pathLabel}: schema missing required field '${field}'`);
+    }
+  }
+
+  for (const [field, fieldSchema] of Object.entries<any>(schema.properties || {})) {
+    if (!Object.prototype.hasOwnProperty.call(value, field) || value[field] === undefined) {
+      continue;
+    }
+
+    const actualValue = value[field];
+    if (fieldSchema.type && !matchesType(actualValue, fieldSchema.type)) {
+      errors.push(`${pathLabel}: schema field '${field}' has invalid type`);
+      continue;
+    }
+
+    if (fieldSchema.enum && !fieldSchema.enum.includes(actualValue)) {
+      errors.push(`${pathLabel}: schema field '${field}' must be one of ${fieldSchema.enum.join(', ')}`);
+    }
+
+    if (fieldSchema.pattern && typeof actualValue === 'string' && !(new RegExp(fieldSchema.pattern).test(actualValue))) {
+      errors.push(`${pathLabel}: schema field '${field}' does not match ${fieldSchema.pattern}`);
+    }
+
+    if (fieldSchema.items && Array.isArray(actualValue)) {
+      actualValue.forEach((item: any, index: number) => {
+        if (fieldSchema.items.type && !matchesType(item, fieldSchema.items.type)) {
+          errors.push(`${pathLabel}: schema field '${field}[${index}]' has invalid type`);
+        }
+      });
+    }
+  }
+
+  return errors;
+}
+
+function loadStateMachine(): any | null {
+  return loadJsonFile(AUTO_FLOW_STATE_MACHINE_PATH);
+}
+
+function getKnownAutoFlowStates(): Set<string> {
+  const machine = loadStateMachine();
+  return new Set((machine?.states || []).map((state: any) => state.id));
+}
+
+function canTransitionAutoFlow(from: string | null, to: string): { allowed: boolean; reason?: string } {
+  const machine = loadStateMachine();
+  if (!machine) {
+    return { allowed: false, reason: `state machine not found at ${AUTO_FLOW_STATE_MACHINE_PATH}` };
+  }
+
+  const states = machine.states || [];
+  const knownStates = new Set(states.map((state: any) => state.id));
+  if (!knownStates.has(to)) {
+    return { allowed: false, reason: `unknown target state '${to}'` };
+  }
+
+  if (!from) {
+    return { allowed: to === machine.entry_state, reason: to === machine.entry_state ? undefined : `initial state must be ${machine.entry_state}` };
+  }
+
+  const current = states.find((state: any) => state.id === from);
+  if (!current) {
+    return { allowed: false, reason: `unknown current state '${from}'` };
+  }
+
+  const allowedTargets = (current.transitions || []).map((transition: any) => transition.to);
+  return {
+    allowed: allowedTargets.includes(to),
+    reason: allowedTargets.includes(to) ? undefined : `transition ${from} -> ${to} is not allowed by auto-flow-state-machine.json`,
+  };
+}
+
+function transitionAutoFlowState(owner: { autoflow?: AutoFlowState }, to: string, reason?: string, options: { allowInitial?: boolean } = {}): void {
+  const from = owner.autoflow?.state || null;
+  if (from || options.allowInitial) {
+    const transition = canTransitionAutoFlow(from, to);
+    if (!transition.allowed) {
+      throw new Error(transition.reason || `transition ${from || '<none>'} -> ${to} is not allowed`);
+    }
+  }
+
+  owner.autoflow = owner.autoflow || { state: to, gates: {}, history: [] };
+  owner.autoflow.history = owner.autoflow.history || [];
+  owner.autoflow.history.push({ from, to, at: new Date().toISOString(), reason });
+  owner.autoflow.state = to;
+}
+
+function ensureAutoFlowGate(subtask: Subtask, gate: string): void {
+  subtask.autoflow = subtask.autoflow || { state: 'write_failing_test', gates: {}, history: [] };
+  subtask.autoflow.gates = subtask.autoflow.gates || {};
+  subtask.autoflow.gates[gate] = true;
+}
+
+function missingAutoFlowGates(subtask: Subtask): string[] {
+  const gates = subtask.autoflow?.gates || {};
+  return REQUIRED_AUTOFLOW_GATES.filter(gate => gates[gate] !== true);
+}
+
+function sanitizeAuditValue(value: any): any {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeAuditValue);
+  }
+  if (value && typeof value === 'object') {
+    return Object.keys(value).reduce((acc: Record<string, any>, key: string) => {
+      if (/(api[_-]?key|token|secret|password|authorization)/i.test(key)) {
+        acc[key] = '[REDACTED]';
+      } else {
+        acc[key] = sanitizeAuditValue(value[key]);
+      }
+      return acc;
+    }, {});
+  }
+  if (typeof value === 'string') {
+    return value
+      .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[REDACTED]')
+      .replace(/ghp_[A-Za-z0-9_]{8,}/g, '[REDACTED]')
+      .replace(/AIza[A-Za-z0-9_-]{12,}/g, '[REDACTED]')
+      .replace(new RegExp('/' + 'Users' + "/[^\\s\\\"']+", 'g'), '[REDACTED]');
+  }
+  return value;
+}
+
+function writeAuditEvent(event: Record<string, any>): void {
+  const now = new Date();
+  const date = now.toISOString().slice(0, 10);
+  const sessionId = String(event.session_id || process.env.AUDIT_SESSION_ID || 'task-cli-local').replace(/[^A-Za-z0-9_.-]/g, '-').slice(0, 80);
+  const outputDir = path.join(AUDIT_ROOT, date);
+  fs.mkdirSync(outputDir, { recursive: true });
+  const outputPath = path.join(outputDir, `${sessionId || 'task-cli-local'}.jsonl`);
+  const payload = sanitizeAuditValue({
+    timestamp: event.timestamp || now.toISOString(),
+    session_id: sessionId || 'task-cli-local',
+    event_type: event.event_type || 'unknown',
+    input_facts: event.input_facts || {},
+    matched_rule: event.matched_rule || null,
+    action: event.action || null,
+    agent: event.agent || null,
+    result: event.result || null,
+    metadata: event.metadata || {},
+  });
+  fs.appendFileSync(outputPath, JSON.stringify(payload) + '\n', 'utf-8');
 }
 
 function getCompletedSeqs(subtasks: Subtask[]): Set<string> {
@@ -1060,13 +1255,248 @@ function cmdBlocked(feature?: string): void {
       for (const s of blocked) {
         const waitingFor = s.depends_on.filter(dep => !completedSeqs.has(dep));
         const reason = s.status === 'blocked'
-          ? 'explicitly blocked'
+          ? (s.blocked_reason || 'explicitly blocked')
           : `waiting: ${waitingFor.join(', ')}`;
         console.log(`  ${s.seq} - ${s.title} (${reason})`);
       }
       console.log();
     }
   }
+}
+
+function getSubtaskOrExit(feature: string, seq: string): { subtasks: Subtask[]; subtask: Subtask } {
+  const subtasks = loadSubtasks(feature);
+  const subtask = subtasks.find(s => s.seq === seq);
+  if (!subtask) {
+    console.log(`Task ${seq} not found in ${feature}`);
+    process.exit(1);
+  }
+  return { subtasks, subtask };
+}
+
+function cmdStart(feature: string, seq: string, agentId?: string): void {
+  const { subtasks, subtask } = getSubtaskOrExit(feature, seq);
+  if (subtask.status !== 'pending') {
+    console.log(`Error: Task ${feature}/${seq} must be pending before start. Current status: ${subtask.status}`);
+    process.exit(1);
+  }
+
+  const unmetDependencies = getUnmetDependencies(subtask, subtasks);
+  if (unmetDependencies.length > 0) {
+    console.log(`Error: Task ${feature}/${seq} cannot start while dependencies are incomplete: ${unmetDependencies.join(', ')}`);
+    process.exit(1);
+  }
+
+  subtask.status = 'in_progress';
+  subtask.started_at = new Date().toISOString();
+  subtask.agent_id = agentId || subtask.suggested_agent || subtask.agent_id || null;
+  subtask.autoflow = subtask.autoflow || { state: 'write_failing_test', gates: {}, history: [] };
+  subtask.autoflow.state = 'write_failing_test';
+  subtask.autoflow.history = subtask.autoflow.history || [];
+  subtask.autoflow.history.push({ from: null, to: 'write_failing_test', at: new Date().toISOString(), reason: 'start subtask' });
+  saveSubtask(feature, subtask);
+
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, seq },
+    action: 'start',
+    agent: subtask.agent_id || 'TaskManager',
+    result: 'in_progress',
+  });
+  console.log(`Started ${feature}/${seq}`);
+}
+
+function cmdGate(feature: string, seq: string, gate: string, evidence: string = ''): void {
+  if (!REQUIRED_AUTOFLOW_GATES.includes(gate) && gate !== 'verify' && gate !== 'complete') {
+    console.log(`Error: Unknown gate '${gate}'. Use one of: ${[...REQUIRED_AUTOFLOW_GATES, 'verify', 'complete'].join(', ')}`);
+    process.exit(1);
+  }
+
+  const { subtask } = getSubtaskOrExit(feature, seq);
+  ensureAutoFlowGate(subtask, gate);
+  subtask.autoflow!.history = subtask.autoflow!.history || [];
+  subtask.autoflow!.history.push({ from: subtask.autoflow!.state, to: subtask.autoflow!.state, at: new Date().toISOString(), reason: evidence || `gate:${gate}` });
+  saveSubtask(feature, subtask);
+
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, seq, gate },
+    action: 'gate',
+    agent: subtask.suggested_agent || subtask.agent_id || 'TaskManager',
+    result: 'recorded',
+    metadata: { evidence },
+  });
+  console.log(`Recorded gate ${gate} for ${feature}/${seq}`);
+}
+
+function cmdTransition(feature: string, toState: string, reason: string = ''): void {
+  const task = loadTask(feature);
+  if (!task) {
+    console.log(`Feature ${feature} not found`);
+    process.exit(1);
+  }
+
+  try {
+    transitionAutoFlowState(task, toState, reason, { allowInitial: true });
+  } catch (error: any) {
+    console.log(`Error: ${error.message}`);
+    process.exit(1);
+  }
+
+  saveTask(feature, task);
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, to_state: toState },
+    action: 'transition',
+    agent: 'synapse',
+    result: 'transitioned',
+    metadata: { reason },
+  });
+  console.log(`Transitioned ${feature} to ${toState}`);
+}
+
+function cmdBlock(feature: string, seqOrReason?: string, reasonParts: string[] = []): void {
+  const looksLikeSeq = !!seqOrReason && /^\d{2}$/.test(seqOrReason);
+  const reason = (looksLikeSeq ? reasonParts.join(' ') : [seqOrReason, ...reasonParts].filter(Boolean).join(' ')).trim();
+  if (!reason) {
+    console.log('Usage: block <feature> [seq] "reason"');
+    process.exit(1);
+  }
+
+  if (looksLikeSeq) {
+    const { subtask } = getSubtaskOrExit(feature, seqOrReason!);
+    if (subtask.status === 'completed' || subtask.status === 'cancelled') {
+      console.log(`Error: Cannot block ${feature}/${seqOrReason} from status ${subtask.status}`);
+      process.exit(1);
+    }
+    subtask.status = 'blocked';
+    subtask.blocked_reason = reason;
+    saveSubtask(feature, subtask);
+  } else {
+    const task = loadTask(feature);
+    if (!task) {
+      console.log(`Feature ${feature} not found`);
+      process.exit(1);
+    }
+    task.status = 'blocked';
+    task.blocked_reason = reason;
+    saveTask(feature, task);
+  }
+
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, seq: looksLikeSeq ? seqOrReason : undefined },
+    action: 'block',
+    agent: 'TaskManager',
+    result: 'blocked',
+    metadata: { reason },
+  });
+  console.log(`Blocked ${looksLikeSeq ? `${feature}/${seqOrReason}` : feature}: ${reason}`);
+}
+
+function cmdUnblock(feature: string, seq?: string): void {
+  if (seq) {
+    const { subtask } = getSubtaskOrExit(feature, seq);
+    if (subtask.status !== 'blocked') {
+      console.log(`Error: Task ${feature}/${seq} is not blocked`);
+      process.exit(1);
+    }
+    subtask.status = 'pending';
+    delete subtask.blocked_reason;
+    saveSubtask(feature, subtask);
+  } else {
+    const task = loadTask(feature);
+    if (!task) {
+      console.log(`Feature ${feature} not found`);
+      process.exit(1);
+    }
+    if (task.status !== 'blocked') {
+      console.log(`Error: Feature ${feature} is not blocked`);
+      process.exit(1);
+    }
+    task.status = 'active';
+    delete task.blocked_reason;
+    saveTask(feature, task);
+  }
+
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, seq },
+    action: 'unblock',
+    agent: 'TaskManager',
+    result: 'unblocked',
+  });
+  console.log(`Unblocked ${seq ? `${feature}/${seq}` : feature}`);
+}
+
+function cmdReopen(feature: string, seq: string): void {
+  const { subtask } = getSubtaskOrExit(feature, seq);
+  if (subtask.status !== 'completed' && subtask.status !== 'cancelled') {
+    console.log(`Error: Task ${feature}/${seq} must be completed or cancelled before reopen. Current status: ${subtask.status}`);
+    process.exit(1);
+  }
+
+  subtask.status = 'in_progress';
+  subtask.completed_at = null;
+  subtask.completion_summary = null;
+  subtask.verification = undefined;
+  subtask.cancelled_reason = undefined;
+  subtask.autoflow = { state: 'implement_minimal_change', gates: { context_discovery: true }, history: [{ from: null, to: 'implement_minimal_change', at: new Date().toISOString(), reason: 'reopen' }] };
+  saveSubtask(feature, subtask);
+
+  const task = loadTask(feature);
+  if (task) {
+    const newSubtasks = loadSubtasks(feature);
+    task.status = 'active';
+    task.completed_count = newSubtasks.filter(s => s.status === 'completed').length;
+    task.completed_at = null;
+    task.verification = undefined;
+    saveTask(feature, task);
+  }
+
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, seq },
+    action: 'reopen',
+    agent: 'TaskManager',
+    result: 'in_progress',
+  });
+  console.log(`Reopened ${feature}/${seq}`);
+}
+
+function cmdCancel(feature: string, seqOrReason?: string, reasonParts: string[] = []): void {
+  const looksLikeSeq = !!seqOrReason && /^\d{2}$/.test(seqOrReason);
+  const reason = (looksLikeSeq ? reasonParts.join(' ') : [seqOrReason, ...reasonParts].filter(Boolean).join(' ')).trim() || 'cancelled';
+
+  if (looksLikeSeq) {
+    const { subtask } = getSubtaskOrExit(feature, seqOrReason!);
+    if (subtask.status === 'completed') {
+      console.log(`Error: Cannot cancel completed task ${feature}/${seqOrReason}; reopen it first if needed`);
+      process.exit(1);
+    }
+    subtask.status = 'cancelled';
+    subtask.cancelled_reason = reason;
+    saveSubtask(feature, subtask);
+  } else {
+    const task = loadTask(feature);
+    if (!task) {
+      console.log(`Feature ${feature} not found`);
+      process.exit(1);
+    }
+    task.status = 'cancelled';
+    task.cancelled_reason = reason;
+    saveTask(feature, task);
+  }
+
+  writeAuditEvent({
+    event_type: 'lifecycle_transition',
+    input_facts: { feature, seq: looksLikeSeq ? seqOrReason : undefined },
+    action: 'cancel',
+    agent: 'TaskManager',
+    result: 'cancelled',
+    metadata: { reason },
+  });
+  console.log(`Cancelled ${looksLikeSeq ? `${feature}/${seqOrReason}` : feature}: ${reason}`);
 }
 
 async function cmdVerify(feature: string, seq: string, options: { force?: boolean; skipCommands?: boolean } = {}): Promise<void> {
@@ -1109,6 +1539,12 @@ async function cmdVerify(feature: string, seq: string, options: { force?: boolea
     process.exit(1);
   }
 
+  const missingGates = missingAutoFlowGates(subtask);
+  if (missingGates.length > 0) {
+    console.log(`Error: Task ${feature}/${seq} cannot verify before required AutoFlow gates are recorded: ${missingGates.join(', ')}`);
+    process.exit(1);
+  }
+
   const verificationResults = await runVerificationGate(subtask, { skipCommands: options.skipCommands });
   const verificationStatus: 'passed' | 'failed' | 'forced' = verificationResults.allPassed
     ? 'passed'
@@ -1130,8 +1566,17 @@ async function cmdVerify(feature: string, seq: string, options: { force?: boolea
     git_diff_checked: (getVerificationSpec(subtask)?.deliverables_must_change || []).length > 0,
     git_diff_summary: verificationResults.gitDiffCheck.summary,
   };
+  ensureAutoFlowGate(subtask, 'verify');
 
   saveSubtask(feature, subtask);
+  writeAuditEvent({
+    event_type: 'verification_result',
+    input_facts: { feature, seq, scope: 'subtask' },
+    action: 'verify',
+    agent: 'BuildAgent',
+    result: verificationStatus,
+    metadata: { spec_hash: verificationResults.specHash, all_passed: verificationResults.allPassed },
+  });
 
   if (verificationResults.allPassed) {
     console.log(`\n✅ VERIFIED: ${feature}/${seq}`);
@@ -1208,6 +1653,14 @@ async function cmdVerifyFeature(feature: string, options: { force?: boolean; ski
   };
 
   saveTask(feature, task);
+  writeAuditEvent({
+    event_type: 'verification_result',
+    input_facts: { feature, scope: 'feature' },
+    action: 'verify-feature',
+    agent: 'BuildAgent',
+    result: verificationStatus,
+    metadata: { spec_hash: verificationResults.specHash, all_passed: verificationResults.allPassed },
+  });
 
   if (verificationResults.allPassed) {
     console.log(`\n✅ FEATURE VERIFIED: ${feature}`);
@@ -1326,6 +1779,14 @@ function cmdArchive(feature: string, options: { force?: boolean } = {}): void {
   task.completed_at = archivedAt;
   saveTask(feature, task);
   fs.renameSync(featureDir, archivedDir);
+  writeAuditEvent({
+    event_type: 'archive',
+    input_facts: { feature },
+    action: 'archive',
+    agent: 'TaskManager',
+    result: 'archived',
+    metadata: { archived_at: archivedAt, location: path.relative(PROJECT_ROOT, archivedDir) },
+  });
 
   console.log(`\n📦 ARCHIVED: ${feature}`);
   console.log(`  Archived At: ${archivedAt}`);
@@ -1432,8 +1893,17 @@ async function cmdComplete(feature: string, seq: string, summary: string, option
   subtask.status = 'completed';
   subtask.completed_at = completedAt;
   subtask.completion_summary = summary;
+  ensureAutoFlowGate(subtask, 'complete');
 
   saveSubtask(feature, subtask);
+  writeAuditEvent({
+    event_type: 'completion',
+    input_facts: { feature, seq },
+    action: 'complete',
+    agent: subtask.suggested_agent || subtask.agent_id || 'unknown',
+    result: 'completed',
+    metadata: { summary },
+  });
 
   const task = loadTask(feature);
   if (task) {
@@ -1465,8 +1935,11 @@ function cmdValidate(feature?: string): void {
   const features = feature ? [feature] : getFeatureDirs();
   let hasErrors = false;
 
-  const validTaskStatuses = new Set(['active', 'completed', 'blocked', 'archived']);
-  const validSubtaskStatuses = new Set(['pending', 'in_progress', 'completed', 'blocked']);
+  const validTaskStatuses = new Set(['active', 'completed', 'blocked', 'archived', 'cancelled']);
+  const validSubtaskStatuses = new Set(['pending', 'in_progress', 'completed', 'blocked', 'cancelled']);
+  const knownAutoFlowStates = getKnownAutoFlowStates();
+  const taskSchema = loadJsonFile(TASK_SCHEMA_PATH);
+  const subtaskSchema = loadJsonFile(SUBTASK_SCHEMA_PATH);
   const validVerificationStatuses = new Set(['passed', 'failed', 'forced']);
 
   const requiredTaskFields = [
@@ -1530,6 +2003,13 @@ function cmdValidate(feature?: string): void {
   for (const f of features) {
     const errors: string[] = [];
 
+    if (!taskSchema) {
+      errors.push(`Missing JSON Schema: ${TASK_SCHEMA_PATH}`);
+    }
+    if (!subtaskSchema) {
+      errors.push(`Missing JSON Schema: ${SUBTASK_SCHEMA_PATH}`);
+    }
+
     // Check task.json exists
     const task = loadTask(f);
     if (!task) {
@@ -1546,6 +2026,10 @@ function cmdValidate(feature?: string): void {
     const seqs = new Set(subtasks.map(s => s.seq));
 
     if (task) {
+      if (taskSchema) {
+        errors.push(...validateAgainstSimpleSchema(task, taskSchema, 'task.json'));
+      }
+
       // Required fields in task.json
       for (const field of requiredTaskFields) {
         if (!hasField(task, field)) {
@@ -1561,6 +2045,10 @@ function cmdValidate(feature?: string): void {
       // Task status should be valid
       if (!validTaskStatuses.has(task.status)) {
         errors.push(`task.json: invalid status '${task.status}'`);
+      }
+
+      if (task.autoflow?.state && !knownAutoFlowStates.has(task.autoflow.state)) {
+        errors.push(`task.json: unknown AutoFlow state '${task.autoflow.state}'`);
       }
 
       // Basic type checks for key task fields
@@ -1607,6 +2095,10 @@ function cmdValidate(feature?: string): void {
     }
 
     for (const s of subtasks) {
+      if (subtaskSchema) {
+        errors.push(...validateAgainstSimpleSchema(s, subtaskSchema, `${s.seq || '??'}`));
+      }
+
       // Required fields in subtask files
       for (const field of requiredSubtaskFields) {
         if (!hasField(s, field)) {
@@ -1630,6 +2122,16 @@ function cmdValidate(feature?: string): void {
       // Status should be valid
       if (!validSubtaskStatuses.has(s.status)) {
         errors.push(`${s.seq}: invalid status '${s.status}'`);
+      }
+
+      if (s.autoflow?.state && !knownAutoFlowStates.has(s.autoflow.state)) {
+        errors.push(`${s.seq}: unknown AutoFlow state '${s.autoflow.state}'`);
+      }
+      if (s.status === 'completed' && missingAutoFlowGates(s).length > 0) {
+        errors.push(`${s.seq}: missing AutoFlow gates: ${missingAutoFlowGates(s).join(', ')}`);
+      }
+      if (s.status === 'completed' && s.autoflow?.gates?.complete !== true) {
+        errors.push(`${s.seq}: completed task requires AutoFlow complete gate`);
       }
 
       // Type checks
@@ -1796,6 +2298,55 @@ function cmdValidate(feature?: string): void {
     case 'blocked':
       cmdBlocked(args[0]);
       break;
+    case 'start':
+      if (args.length < 2) {
+        console.log('Usage: start <feature> <seq> [agent_id]');
+        process.exit(1);
+      }
+      cmdStart(args[0], args[1], args[2]);
+      break;
+    case 'gate':
+      if (args.length < 3) {
+        console.log('Usage: gate <feature> <seq> <context_discovery|red|green|review> [evidence]');
+        process.exit(1);
+      }
+      cmdGate(args[0], args[1], args[2], args.slice(3).join(' '));
+      break;
+    case 'transition':
+      if (args.length < 2) {
+        console.log('Usage: transition <feature> <state> [reason]');
+        process.exit(1);
+      }
+      cmdTransition(args[0], args[1], args.slice(2).join(' '));
+      break;
+    case 'block':
+      if (args.length < 2) {
+        console.log('Usage: block <feature> [seq] "reason"');
+        process.exit(1);
+      }
+      cmdBlock(args[0], args[1], args.slice(2));
+      break;
+    case 'unblock':
+      if (args.length < 1) {
+        console.log('Usage: unblock <feature> [seq]');
+        process.exit(1);
+      }
+      cmdUnblock(args[0], args[1]);
+      break;
+    case 'reopen':
+      if (args.length < 2) {
+        console.log('Usage: reopen <feature> <seq>');
+        process.exit(1);
+      }
+      cmdReopen(args[0], args[1]);
+      break;
+    case 'cancel':
+      if (args.length < 1) {
+        console.log('Usage: cancel <feature> [seq] [reason]');
+        process.exit(1);
+      }
+      cmdCancel(args[0], args[1], args.slice(2));
+      break;
     case 'verify':
       if (args.length < 2) {
         console.log('Usage: verify <feature> <seq> [--force] [--skip-commands]');
@@ -1878,6 +2429,13 @@ Commands:
   parallel [feature]                Show parallelizable tasks ready to run
   deps <feature> <seq>              Show dependency tree for a task
   blocked [feature]                 Show blocked tasks and why
+  start <feature> <seq> [agent_id]  Mark a dependency-ready subtask in progress
+  gate <feature> <seq> <gate>       Record AutoFlow gate evidence
+  transition <feature> <state>      Validate and store AutoFlow state transition
+  block <feature> [seq] "reason"    Mark a feature or subtask blocked
+  unblock <feature> [seq]           Reopen a blocked feature or subtask
+  reopen <feature> <seq>            Reopen a completed/cancelled subtask
+  cancel <feature> [seq] [reason]   Cancel a feature or subtask
   verify <feature> <seq> [--force] [--skip-commands]
                                     Run verification gate and save evidence
   verify-feature <feature> [--force] [--skip-commands]
@@ -1898,6 +2456,10 @@ Complete Options:
 Examples:
   npx ts-node task-cli.ts status
   npx ts-node task-cli.ts next my-feature
+  npx ts-node task-cli.ts start my-feature 02 CoderAgent
+  npx ts-node task-cli.ts gate my-feature 02 red "targeted test failed as expected"
+  npx ts-node task-cli.ts gate my-feature 02 green "targeted test passed"
+  npx ts-node task-cli.ts gate my-feature 02 review "no blocking findings"
   npx ts-node task-cli.ts verify my-feature 02
   npx ts-node task-cli.ts complete my-feature 02 "Implemented auth module"
   npx ts-node task-cli.ts verify-feature my-feature

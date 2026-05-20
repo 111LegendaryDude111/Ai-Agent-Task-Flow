@@ -7,15 +7,15 @@
       "name": "Local Ollama",
       "npm": "@ai-sdk/openai-compatible",
       "models": {
-        "gpt-oss:20b": {
-          "name": "gpt-oss:20b",
+        "qwen3:4b": {
+          "name": "Qwen3 4B",
           "limit": {
             "context": 32768,
             "output": 8192
           }
         },
-        "qwen3:4b": {
-          "name": "Qwen3 4B",
+        "gpt-oss:20b": {
+          "name": "gpt-oss:20b",
           "limit": {
             "context": 32768,
             "output": 8192
@@ -48,48 +48,27 @@
   "mcp": {
     "docker": {
       "type": "local",
-      "command": [
-        "docker",
-        "mcp",
-        "gateway",
-        "run"
-      ],
+      "command": ["docker", "mcp", "gateway", "run"],
       "enabled": false
     },
     "browser": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@playwright/mcp@latest"
-      ],
-      "enabled": true
+      "command": ["npx", "-y", "@playwright/mcp@latest"],
+      "enabled": false
     },
     "obsidian": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/davidsukhashvili/Documents/Obsidian_storage"
-      ],
-      "enabled": true
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "{env:OBSIDIAN_VAULT_PATH}"],
+      "enabled": false
     },
     "colab-proxy-mcp": {
       "type": "local",
-      "command": [
-        "uvx",
-        "git+https://github.com/googlecolab/colab-mcp"
-      ],
-      "enabled": true
+      "command": ["uvx", "git+https://github.com/googlecolab/colab-mcp"],
+      "enabled": false
     },
     "brave-search": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-brave-search"
-      ],
+      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
       "enabled": false,
       "environment": {
         "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
@@ -97,12 +76,8 @@
     },
     "duckduckgo-search": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "duckduckgo-mcp-server"
-      ],
-      "enabled": true
+      "command": ["npx", "-y", "duckduckgo-mcp-server"],
+      "enabled": false
     }
   },
   "agent": {
@@ -116,7 +91,7 @@
         "glob": "allow",
         "grep": "allow",
         "list": "allow",
-        "edit": "allow",
+        "edit": "deny",
         "bash": {
           "rm -rf /*": "deny",
           "sudo *": "deny",
@@ -125,7 +100,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -145,7 +119,7 @@
           "git clean*": "ask",
           "*": "ask"
         },
-        "write": "allow",
+        "write": "deny",
         "task": "allow",
         "question": "allow"
       }
@@ -169,7 +143,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -213,7 +186,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -257,7 +229,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -301,7 +272,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -345,7 +315,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -389,7 +358,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -433,7 +401,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -477,7 +444,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -521,7 +487,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -565,7 +530,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -609,7 +573,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -653,7 +616,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -697,7 +659,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -741,7 +702,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -785,7 +745,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -829,7 +788,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -873,7 +831,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -917,7 +874,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",

@@ -68,7 +68,7 @@
         "Split the goal into vertical tracer-bullet subtasks.",
         "Each subtask must include Definition of Ready and Definition of Done in acceptance criteria.",
         "Each subtask must include suggested_agent, deliverables, dependencies, and verification_spec.",
-        "Run task-cli validate for the feature when permitted."
+        "Run npm run task-cli -- validate for the feature when permitted."
       ],
       "transitions": [
         {
@@ -87,7 +87,7 @@
       "purpose": "Select the next dependency-ready subtask from task-cli state.",
       "required_artifacts": ["next_subtask"],
       "actions": [
-        "Run or request task-cli next <feature>.",
+        "Run or request npm run task-cli -- next <feature>.",
         "Mark the selected subtask in_progress when the task system requires it.",
         "Load subtask context_files, acceptance_criteria, deliverables, and verification_spec."
       ],
@@ -248,7 +248,7 @@
       "purpose": "Run the task-cli verification gate for the selected subtask.",
       "required_artifacts": ["verification_evidence"],
       "actions": [
-        "Run task-cli verify <feature> <seq> when permitted.",
+        "Run npm run task-cli -- verify <feature> <seq> when permitted.",
         "If verification fails, preserve output and route to diagnosis or implementation.",
         "Do not complete without passed verification."
       ],
@@ -273,7 +273,7 @@
       "purpose": "Close the selected subtask only after successful verification.",
       "required_artifacts": ["completion_summary"],
       "actions": [
-        "Run task-cli complete <feature> <seq> \"summary\" when permitted.",
+        "Run npm run task-cli -- complete <feature> <seq> \"summary\" when permitted.",
         "Summarize changed files, tests, review, and verification."
       ],
       "transitions": [
@@ -293,8 +293,8 @@
       "purpose": "Run feature-level verification after all subtasks complete.",
       "required_artifacts": ["feature_verification_evidence"],
       "actions": [
-        "Run task-cli verify-feature <feature> when feature verification_spec exists.",
-        "Run task-cli archive <feature> only after feature verification passes and user wants archive.",
+        "Run npm run task-cli -- verify-feature <feature> when feature verification_spec exists.",
+        "Run npm run task-cli -- archive <feature> only after feature verification passes and user wants archive.",
         "Report any remaining risks."
       ],
       "transitions": [
@@ -331,10 +331,10 @@
     }
   ],
   "global_guards": [
-    "edit/write inside target repository and safe read-only bash allowlist are allowed after task approval; other bash/delete/dependency-install/network/destructive-git/outside-repo/secrets operations require explicit approval before execution",
+    "matched subagents may edit/write inside target repository after task approval; safe read-only bash allowlist excludes broad file discovery; other bash/delete/dependency-install/network/destructive-git/outside-repo/secrets operations require explicit approval before execution",
     "Synapse does not directly implement production code",
     "one behavior -> one failing test -> minimal implementation -> green",
     "tests must not be weakened unless they contradict explicit requirements",
-    "completion requires task-cli verify then task-cli complete"
+    "completion requires npm run task-cli -- verify then npm run task-cli -- complete"
   ]
 }

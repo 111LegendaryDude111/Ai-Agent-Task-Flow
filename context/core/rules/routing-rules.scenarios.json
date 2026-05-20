@@ -193,6 +193,86 @@
       "expected_action": {
         "type": "FAIL"
       }
+    },
+    {
+      "id": "scenario-016",
+      "name": "Conflict chooses higher priority test failure diagnosis",
+      "input": {
+        "task_type": "playwright_test",
+        "file_extension": ".spec.ts",
+        "context_contains": "failing test output"
+      },
+      "expected_rule": "test-failure-diagnosis-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "TestDiagnostician"
+      }
+    },
+    {
+      "id": "scenario-017",
+      "name": "Ambiguous docs review keeps first same-priority docs route",
+      "input": {
+        "task_type": "documentation",
+        "file_path": "docs/review-notes.md",
+        "context_contains": "review documentation"
+      },
+      "expected_rule": "documentation-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "DocWriter"
+      }
+    },
+    {
+      "id": "scenario-018",
+      "name": "Mixed stack falls back to generic coder",
+      "input": {
+        "repo_type": "js",
+        "file_extension": ".java",
+        "task_type": "implementation"
+      },
+      "expected_rule": "generic-coding-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "CoderAgent"
+      }
+    },
+    {
+      "id": "scenario-019",
+      "name": "Unknown repo type with implementation routes generic",
+      "input": {
+        "repo_type": "unknown",
+        "file_extension": ".tsx",
+        "task_type": "implementation"
+      },
+      "expected_rule": "generic-coding-routing",
+      "expected_action": {
+        "type": "DELEGATE",
+        "agent": "CoderAgent"
+      }
+    },
+    {
+      "id": "scenario-020",
+      "name": "Case-sensitive RAG match does not trigger on lowercase",
+      "input": {
+        "task_type": "unknown_work",
+        "context_contains": "rag pipeline"
+      },
+      "expected_action": {
+        "type": "FAIL"
+      }
+    },
+    {
+      "id": "scenario-021",
+      "name": "Security-sensitive secret edit requires approval over docs route",
+      "input": {
+        "operation_type": "secret_edit",
+        "task_type": "documentation",
+        "file_path": "docs/provider.md"
+      },
+      "expected_rule": "approval-gate",
+      "expected_action": {
+        "type": "REQUEST_APPROVAL"
+      }
     }
   ]
 }

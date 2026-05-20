@@ -73,7 +73,7 @@
       "expected": {
         "primary": "external",
         "tools_include": [
-          "ExternalScout",
+          "external docs connector",
           "web"
         ],
         "fallback_includes": [

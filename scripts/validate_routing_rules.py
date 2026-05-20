@@ -16,6 +16,7 @@ Usage:
 import json
 import sys
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
@@ -26,6 +27,11 @@ try:
     from jsonschema import Draft202012Validator
 except ImportError:
     Draft202012Validator = None
+
+try:
+    from audit_writer import append_audit_event
+except ImportError:
+    append_audit_event = None
 
 
 SAFE_DIRECT_OPERATION_TYPES = {
@@ -187,10 +193,18 @@ class ConditionEvaluator:
         expected_value = condition.get("value")
         fact_value = self.facts.get(cond_type)
 
-        if fact_value is None:
-            return False, f"{cond_type}=undefined"
-
         try:
+            if operator == "exists":
+                result = (fact_value is not None) == bool(expected_value)
+                return result, f"{cond_type} exists={expected_value}"
+
+            if operator == "not_exists":
+                result = (fact_value is None) == bool(expected_value)
+                return result, f"{cond_type} not_exists={expected_value}"
+
+            if fact_value is None:
+                return False, f"{cond_type}=undefined"
+
             if operator == "eq":
                 result = str(fact_value) == str(expected_value)
                 return result, f"{cond_type}={fact_value} {operator} {expected_value}"
@@ -219,9 +233,36 @@ class ConditionEvaluator:
                 result = str(expected_value) not in str(fact_value)
                 return result, f"{cond_type} not_contains '{expected_value}'"
 
-            elif operator == "exists":
-                result = expected_value if fact_value is not None else not expected_value
-                return result, f"{cond_type} exists={expected_value}"
+            elif operator == "starts_with":
+                result = str(fact_value).startswith(str(expected_value))
+                return result, f"{cond_type} starts_with '{expected_value}'"
+
+            elif operator == "ends_with":
+                result = str(fact_value).endswith(str(expected_value))
+                return result, f"{cond_type} ends_with '{expected_value}'"
+
+            elif operator == "matches_regex":
+                result = re.search(str(expected_value), str(fact_value)) is not None
+                return result, f"{cond_type} matches_regex '{expected_value}'"
+
+            elif operator in {"gt", "gte", "lt", "lte"}:
+                left = float(fact_value)
+                right = float(expected_value)
+                comparisons = {
+                    "gt": left > right,
+                    "gte": left >= right,
+                    "lt": left < right,
+                    "lte": left <= right,
+                }
+                return comparisons[operator], f"{cond_type}={left} {operator} {right}"
+
+            elif operator == "is_true":
+                result = fact_value is True
+                return result, f"{cond_type} is_true"
+
+            elif operator == "is_false":
+                result = fact_value is False
+                return result, f"{cond_type} is_false"
 
             else:
                 return False, f"Unknown operator: {operator}"
@@ -433,7 +474,10 @@ class RoutingRulesValidator:
         valid_atomic = [
             "repo_type", "file_extension", "file_path", "task_type",
             "operation_type", "context_contains", "has_dependency",
-            "parallel_safe", "is_test_file", "is_config_file"
+            "parallel_safe", "is_test_file", "is_config_file",
+            "is_documentation", "repo_path_pattern", "session_exists",
+            "memory_available", "context_files_found", "branch_status",
+            "custom"
         ]
 
         if cond_type in valid_logical:
@@ -484,9 +528,48 @@ class RoutingRulesValidator:
 
         for scenario in scenarios:
             result = self._run_single_scenario(scenario)
+            self._write_audit_events_for_scenario(scenario, result)
             results.append(result)
 
         return results
+
+    def _write_audit_events_for_scenario(self, scenario: Dict[str, Any], result: TestResult) -> None:
+        if append_audit_event is None:
+            return
+
+        expected_action = scenario.get("expected_action", {})
+        action_type = expected_action.get("type")
+        agent = expected_action.get("agent")
+        matched_rule = result.actual or scenario.get("expected_rule")
+        base_event = {
+            "session_id": "routing-validation",
+            "input_facts": scenario.get("input", {}),
+            "matched_rule": matched_rule,
+            "action": expected_action,
+            "agent": agent,
+        }
+
+        append_audit_event({
+            **base_event,
+            "event_type": "routing_decision",
+            "result": result.status.value,
+            "metadata": {"scenario_id": scenario.get("id"), "message": result.message},
+        })
+
+        if action_type == "REQUEST_APPROVAL":
+            append_audit_event({
+                **base_event,
+                "event_type": "approval_decision",
+                "result": "approval_required",
+                "metadata": {"scenario_id": scenario.get("id")},
+            })
+        elif action_type in {"DELEGATE", "DELEGATE_WITH_CONTEXT"}:
+            append_audit_event({
+                **base_event,
+                "event_type": "subagent_handoff",
+                "result": "handoff_required",
+                "metadata": {"scenario_id": scenario.get("id")},
+            })
 
     def _run_single_scenario(self, scenario: Dict[str, Any]) -> TestResult:
         """Run a single test scenario."""

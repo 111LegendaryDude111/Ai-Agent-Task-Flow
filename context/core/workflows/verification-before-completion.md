@@ -1,15 +1,15 @@
 # Verification Before Completion
 
-A task is not done until:
+A task-flow subtask is not done until both commands succeed:
 
 ```bash
-npx ts-node scripts/task-cli.ts verify <feature> <seq>
-npx ts-node scripts/task-cli.ts complete <feature> <seq> "summary"
+npm run task-cli -- verify <feature> <seq>
+npm run task-cli -- complete <feature> <seq> "summary"
 ```
 
 Feature archive requires:
 
 ```bash
-npx ts-node scripts/task-cli.ts verify-feature <feature>
-npx ts-node scripts/task-cli.ts archive <feature>
+npm run task-cli -- verify-feature <feature>
+npm run task-cli -- archive <feature>
 ```

@@ -13,6 +13,13 @@
             "context": 32768,
             "output": 8192
           }
+        },
+        "gpt-oss:20b": {
+          "name": "gpt-oss:20b",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
         }
       },
       "options": {
@@ -34,56 +41,43 @@
       },
       "options": {
         "baseURL": "https://openrouter.ai/api/v1",
-        "apiKey": "{env: OPEN_ROUTER_KEY}"
+        "apiKey": "{env:OPENROUTER_API_KEY}"
       }
     }
   },
   "mcp": {
     "docker": {
       "type": "local",
-      "command": [
-        "docker",
-        "mcp",
-        "gateway",
-        "run"
-      ],
+      "command": ["docker", "mcp", "gateway", "run"],
       "enabled": false
     },
     "browser": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@playwright/mcp@latest"
-      ],
-      "enabled": true
+      "command": ["npx", "-y", "@playwright/mcp@latest"],
+      "enabled": false
     },
     "obsidian": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "/Users/davidsukhashvili/Documents/Obsidian_storage"
-      ],
-      "enabled": true
+      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "{env:OBSIDIAN_VAULT_PATH}"],
+      "enabled": false
     },
     "colab-proxy-mcp": {
       "type": "local",
-      "command": [
-        "uvx",
-        "git+https://github.com/googlecolab/colab-mcp"
-      ],
-      "enabled": true
+      "command": ["uvx", "git+https://github.com/googlecolab/colab-mcp"],
+      "enabled": false
+    },
+    "brave-search": {
+      "type": "local",
+      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
+      "enabled": false,
+      "environment": {
+        "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
+      }
     },
     "duckduckgo-search": {
       "type": "local",
-      "command": [
-        "npx",
-        "-y",
-        "duckduckgo-mcp-server"
-      ],
-      "enabled": true
+      "command": ["npx", "-y", "duckduckgo-mcp-server"],
+      "enabled": false
     }
   },
   "agent": {
@@ -91,13 +85,13 @@
       "description": "Provider-neutral orchestrator for context-first, rule-routed development",
       "mode": "primary",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/core/sfa-synapse.md}",
+      "prompt": "{file:./agent/core/sfa-synapse.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
         "grep": "allow",
         "list": "allow",
-        "edit": "allow",
+        "edit": "deny",
         "bash": {
           "rm -rf /*": "deny",
           "sudo *": "deny",
@@ -106,7 +100,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -126,7 +119,7 @@
           "git clean*": "ask",
           "*": "ask"
         },
-        "write": "allow",
+        "write": "deny",
         "task": "allow",
         "question": "allow"
       }
@@ -135,7 +128,7 @@
       "description": "Read-only context discovery subagent",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/core/contextscout.md}",
+      "prompt": "{file:./agent/subagents/core/contextscout.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -150,7 +143,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -179,7 +171,7 @@
       "description": "Breaks complex work into verifiable JSON subtasks",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/core/task-manager.md}",
+      "prompt": "{file:./agent/subagents/core/task-manager.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -194,7 +186,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -223,7 +214,7 @@
       "description": "Documentation generation and maintenance subagent",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/core/documentation.md}",
+      "prompt": "{file:./agent/subagents/core/documentation.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -238,7 +229,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -267,7 +257,7 @@
       "description": "Writes focused failing tests before implementation",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/testing/test-designer.md}",
+      "prompt": "{file:./agent/subagents/testing/test-designer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -282,7 +272,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -311,7 +300,7 @@
       "description": "Alias for TestDesigner used by slash commands",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/testing/test-designer.md}",
+      "prompt": "{file:./agent/subagents/testing/test-designer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -326,7 +315,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -355,7 +343,7 @@
       "description": "Diagnoses failing tests and recommends minimal fixes",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/testing/test-diagnostician.md}",
+      "prompt": "{file:./agent/subagents/testing/test-diagnostician.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -370,7 +358,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -399,7 +386,7 @@
       "description": "Alias for TestDiagnostician used by slash commands",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/testing/test-diagnostician.md}",
+      "prompt": "{file:./agent/subagents/testing/test-diagnostician.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -414,7 +401,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -443,7 +429,7 @@
       "description": "Generates or updates Playwright E2E tests from explicit user flow steps",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/testing/playwright-test-generator.md}",
+      "prompt": "{file:./agent/subagents/testing/playwright-test-generator.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -458,7 +444,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -487,7 +472,7 @@
       "description": "Read-only build, type-check, and test validation subagent",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/code/build-agent.md}",
+      "prompt": "{file:./agent/subagents/code/build-agent.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -502,7 +487,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -531,7 +515,7 @@
       "description": "Code review and risk assessment subagent",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/code/reviewer.md}",
+      "prompt": "{file:./agent/subagents/code/reviewer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -546,7 +530,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -575,7 +558,7 @@
       "description": "Generic implementation subagent for work without a more specific specialist",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/code/coder-agent.md}",
+      "prompt": "{file:./agent/subagents/code/coder-agent.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -590,7 +573,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -619,7 +601,7 @@
       "description": "TypeScript, React, and CSS implementation subagent",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/development/frontend-developer.md}",
+      "prompt": "{file:./agent/subagents/development/frontend-developer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -634,7 +616,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -663,7 +644,7 @@
       "description": "Java/Kotlin backend implementation subagent",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/development/java-developer.md}",
+      "prompt": "{file:./agent/subagents/development/java-developer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -678,7 +659,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -707,7 +687,7 @@
       "description": "Implements and reviews ML tasks with validation, metrics, leakage checks, and reproducibility discipline",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/development/ml-developer.md}",
+      "prompt": "{file:./agent/subagents/development/ml-developer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -722,7 +702,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -751,7 +730,7 @@
       "description": "Alias for MLDeveloper used by slash commands",
       "mode": "subagent",
       "temperature": 0.2,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/subagents/development/ml-developer.md}",
+      "prompt": "{file:./agent/subagents/development/ml-developer.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -766,7 +745,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -795,7 +773,7 @@
       "description": "Deterministic JSON routing engine spec",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/core/rules-engine/routing-engine.md}",
+      "prompt": "{file:./agent/core/rules-engine/routing-engine.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -810,7 +788,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -839,7 +816,7 @@
       "description": "Evaluates routing condition DSL against input facts",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/core/rules-engine/condition-evaluator.md}",
+      "prompt": "{file:./agent/core/rules-engine/condition-evaluator.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -854,7 +831,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",
@@ -883,7 +859,7 @@
       "description": "Audit event contract for routing, approval, and verification events",
       "mode": "subagent",
       "temperature": 0.1,
-      "prompt": "{file:/Users/davidsukhashvili/Desktop/ML/Work_Projects/AiAgent-Pipline-Tasks/agent/core/rules-engine/audit-logger.md}",
+      "prompt": "{file:./agent/core/rules-engine/audit-logger.md}",
       "permission": {
         "read": "allow",
         "glob": "allow",
@@ -898,7 +874,6 @@
           "* >> /dev/*": "deny",
           "pwd": "allow",
           "ls *": "allow",
-          "find *": "allow",
           "rg *": "allow",
           "grep *": "allow",
           "git status*": "allow",

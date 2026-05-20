@@ -7,6 +7,9 @@ docs/temp.md
 .DS_Store
 *.log
 *.tmp
+.cache/
+.nyc_output/
+out/
 
 # Environment and secrets
 .env

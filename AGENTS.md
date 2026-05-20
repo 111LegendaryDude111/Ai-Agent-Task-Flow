@@ -9,10 +9,10 @@ Use Russian for user-facing summaries unless the user asks otherwise. Code and i
 - Synapse Orchestrator coordinates; it does not directly implement production code.
 - Load context before implementation.
 - Use `context/core/rules/routing-rules.json` for deterministic delegation.
-- Edits and writes inside the target repository are allowed after task approval.
-- Safe read-only bash commands from the allowlist (`pwd`, `ls *`, `find *`, `rg *`, `grep *`, `git status*`, `git diff*`) may run without approval.
+- Edits and writes inside the target repository are allowed for the matched subagent after task approval.
+- Safe read-only bash commands from the allowlist (`pwd`, `ls *`, `rg *`, `grep *`, `git status*`, `git diff*`) may run without approval.
 - Ask for approval before other `bash`, delete operations, dependency installs, network operations, destructive git operations, edits outside the target repository, or changes to secrets/env files.
-- After approval for a gated operation, route again to the matched subagent.
+- Approval removes only the safety gate; after approval, route again to the matched subagent.
 - Do not claim completion before `verify → complete` succeeds.
 
 ## Source priority

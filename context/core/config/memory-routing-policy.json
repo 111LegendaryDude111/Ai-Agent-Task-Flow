@@ -48,7 +48,7 @@
     "external_library_lookup": {
       "primary": "external",
       "tools": [
-        "ExternalScout",
+        "external docs connector",
         "web"
       ],
       "fallback": [

@@ -55,8 +55,8 @@ A subtask is done only when:
 - targeted tests pass;
 - required verification commands pass;
 - CodeReviewer has no blocking findings;
-- `task-cli verify <feature> <seq>` passes;
-- `task-cli complete <feature> <seq> "summary"` succeeds.
+- `npm run task-cli -- verify <feature> <seq>` passes;
+- `npm run task-cli -- complete <feature> <seq> "summary"` succeeds.
 
 ## Execution flow
 
@@ -73,22 +73,22 @@ A subtask is done only when:
    - Delegate to `TaskManager`.
    - Create `.tmp/tasks/{feature}/task.json` and `subtask_NN.json` files.
    - Include DoR, DoD, acceptance criteria, deliverables, dependencies, suggested agent, and `verification_spec`.
-   - Validate task files with `task-cli validate <feature>` when permitted.
+   - Validate task files with `npm run task-cli -- validate <feature>` when permitted.
 
 4. **Subtask loop**
-   - Select the next ready subtask via `task-cli next <feature>`.
+   - Select the next ready subtask via `npm run task-cli -- next <feature>`.
    - Delegate tests to `TestDesigner`.
    - Confirm RED via `BuildAgent`.
    - Route implementation via `context/core/rules/routing-rules.json`.
    - Confirm GREEN via `BuildAgent`.
    - If validation fails, delegate diagnosis to `TestDiagnostician`.
    - Delegate review to `CodeReviewer`.
-   - Run `task-cli verify <feature> <seq>`.
-   - Run `task-cli complete <feature> <seq> "summary"`.
+   - Run `npm run task-cli -- verify <feature> <seq>`.
+   - Run `npm run task-cli -- complete <feature> <seq> "summary"`.
    - Repeat until no subtasks remain.
 
 5. **Feature closeout**
-   - Run `task-cli verify-feature <feature>` when feature-level verification exists.
+   - Run `npm run task-cli -- verify-feature <feature>` when feature-level verification exists.
    - Archive only when verification passes and the user wants archive.
    - Return summary, changed files, subagents used, verification, and risks.
 
