@@ -68,6 +68,14 @@
       ],
       "enabled": true
     },
+    "colab-proxy-mcp": {
+      "type": "local",
+      "command": [
+        "uvx",
+        "git+https://github.com/googlecolab/colab-mcp"
+      ],
+      "enabled": true
+    },
     "duckduckgo-search": {
       "type": "local",
       "command": [

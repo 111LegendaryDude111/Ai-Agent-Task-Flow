@@ -87,6 +87,26 @@ enabled: true
 
 Не коммить реальный `BRAVE_API_KEY`.
 
+## Google Colab MCP
+
+Для подключения AI-агента к Google Colab добавлен официальный Colab MCP server от Google:
+
+```jsonc
+"colab-proxy-mcp": {
+  "type": "local",
+  "command": ["uvx", "git+https://github.com/googlecolab/colab-mcp"],
+  "enabled": true
+}
+```
+
+Prerequisites по Google: Python, git и `uv`/`uvx`. Если `uvx` отсутствует, установи `uv`:
+
+```bash
+pip install uv
+```
+
+После запуска OpenCode открой любой Google Colab notebook в браузере и проси агента работать с ним через MCP.
+
 ## Fallback: local Ollama
 
 Локальный provider `local-ollama` сохранен в конфиге как fallback.
