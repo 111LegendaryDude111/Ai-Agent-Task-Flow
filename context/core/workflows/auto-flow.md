@@ -5,19 +5,23 @@ AutoFlow turns one user goal into a deterministic multi-agent implementation loo
 Use this workflow when the user asks to run `auto-flow`, wants an agent to execute a prewritten plan, or wants an end-to-end flow from decomposition to tests, implementation, review, and completion.
 
 State machine source: `context/core/workflows/auto-flow-state-machine.json`.
+TDD discipline source: `skills/tdd/SKILL.md`.
 
 ## Principles
 
 - Synapse orchestrates; it does not implement production code.
 - State lives in `.tmp/tasks/{feature}/task.json` and `subtask_NN.json`, not in agent memory.
 - Work is split into vertical subtasks, not horizontal phases.
+- AutoFlow loads and applies `skills/tdd/SKILL.md` for every feature/bugfix implementation subtask.
+- The TDD skill improves the existing `TestDesigner`/`BuildAgent`/implementation loop; it does not replace `TestDesigner`.
 - Each implementation subtask follows vertical TDD:
 
 ```text
-one behavior -> failing test -> minimal implementation -> green -> review -> verify -> complete
+one behavior -> failing test -> minimal implementation -> green -> optional scoped refactor -> green -> review -> verify -> complete
 ```
 
 - Do not weaken tests to make code pass unless the test contradicts explicit requirements.
+- Never refactor while RED; refactor only after GREEN, within selected subtask scope, then re-run GREEN validation.
 - Do not claim completion before verification succeeds.
 
 ## Roles
@@ -27,6 +31,7 @@ one behavior -> failing test -> minimal implementation -> green -> review -> ver
 | Orchestration | `synapse` |
 | Context discovery | `ContextScout` |
 | Decomposition and task files | `TaskManager` |
+| TDD discipline | `skills/tdd/SKILL.md` |
 | Failing tests | `TestDesigner` |
 | Implementation | routing-selected implementation subagent, including `MLDeveloper` for ML/RAG/model work |
 | Test/build validation | `BuildAgent` |
@@ -43,6 +48,8 @@ Every subtask created by AutoFlow must be ready before implementation starts:
 - deliverables are listed;
 - acceptance criteria include the expected behavior;
 - test strategy is clear;
+- public interface or observable behavior is identified;
+- first tracer-bullet behavior is selected for RED;
 - `verification_spec` can be executed deterministically;
 - suggested implementation agent is set.
 
@@ -52,7 +59,7 @@ A subtask is done only when:
 
 - the expected failing test was created or relevant failing coverage already existed;
 - implementation is minimal and scoped;
-- targeted tests pass;
+- targeted tests pass after implementation and after any scoped refactor;
 - required verification commands pass;
 - CodeReviewer has no blocking findings;
 - `npm run task-cli -- verify <feature> <seq>` passes;
@@ -77,10 +84,12 @@ A subtask is done only when:
 
 4. **Subtask loop**
    - Select the next ready subtask via `npm run task-cli -- next <feature>`.
-   - Delegate tests to `TestDesigner`.
+   - Load and apply `skills/tdd/SKILL.md`.
+   - Delegate RED to `TestDesigner`: one focused behavior test through the public interface.
    - Confirm RED via `BuildAgent`.
    - Route implementation via `context/core/rules/routing-rules.json`.
    - Confirm GREEN via `BuildAgent`.
+   - Refactor only after GREEN when the selected subtask scope needs it, then re-run GREEN validation.
    - If validation fails, delegate diagnosis to `TestDiagnostician`.
    - Delegate review to `CodeReviewer`.
    - Run `npm run task-cli -- verify <feature> <seq>`.
@@ -96,6 +105,7 @@ A subtask is done only when:
 
 - If RED does not fail for the expected reason, diagnose before implementing.
 - If GREEN fails, diagnose before editing tests.
+- If post-GREEN refactor breaks validation, route to diagnosis or implementation before review.
 - If review blocks implementation, return to implementation.
 - If review blocks test coverage, return to `TestDesigner`.
 - If environment, secrets, external services, or ambiguous requirements block verification, stop in `blocked` and ask for the smallest missing input.

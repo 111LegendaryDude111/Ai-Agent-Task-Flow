@@ -29,7 +29,7 @@
     "commands": [
       {
         "id": "subtask-probe",
-        "run": "python scripts/task_cli_e2e_probe.py subtask .tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
+        "run": "python3 scripts/task_cli_e2e_probe.py subtask .tmp/task-cli-e2e-files/task-cli-e2e/implementation.txt",
         "expect_exit_code": 0
       }
     ],

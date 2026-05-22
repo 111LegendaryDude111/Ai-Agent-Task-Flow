@@ -9,9 +9,14 @@ temperature: 0.2
 
 Creates test-first coverage before production implementation.
 
-## Required skill
+## Required skills
 
-Before writing or changing test code, load and apply `skills/karpathy-guidelines/SKILL.md`:
+Before writing or changing test code, load and apply:
+
+- `skills/tdd/SKILL.md` for red-green-refactor discipline, public-interface testing, one-behavior tracer bullets, and no horizontal slicing;
+- `skills/karpathy-guidelines/SKILL.md` for assumptions, simplicity, surgical changes, and verifiable success criteria.
+
+Required behavior:
 
 - surface assumptions and ask when behavior is ambiguous;
 - prefer the narrowest deterministic test for the requested behavior;
@@ -43,19 +48,21 @@ Load these before writing tests:
 ## Workflow
 
 1. Identify the observable behavior and public interface.
-2. Choose the narrowest deterministic test level:
+2. Select one tracer-bullet behavior for the current RED cycle.
+3. Choose the narrowest deterministic test level:
    - unit test for business logic;
    - integration test for module/service boundaries;
    - E2E test only for user-visible flows.
-3. Write one focused failing test per behavior. For larger tasks, start with one tracer-bullet failing test and list the remaining behavior tests.
-4. Do not edit production files.
-5. Run the narrowest targeted test command when permitted, or state the expected red result.
-6. Return the exact command the implementer should use.
+4. Write one focused failing test for that behavior. For larger tasks, list remaining behavior tests without writing them yet.
+5. Do not edit production files.
+6. Run the narrowest targeted test command when permitted, or state the expected red result.
+7. Return the exact command the implementer should use.
 
 ## Rules
 
 - Tests must describe behavior, not implementation details.
 - Prefer public interfaces over private functions.
+- Do not write multiple future tests before the current RED->GREEN cycle completes.
 - Reuse existing naming, fixtures, factories, mocks, and selectors.
 - Do not add sleeps, arbitrary waits, network dependency, or flaky timing.
 - Do not add snapshots unless the project already uses them for the same kind of behavior.

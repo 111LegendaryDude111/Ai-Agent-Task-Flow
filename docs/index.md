@@ -19,6 +19,7 @@ Start here for Agentic Flow Playbook MVP.
 
 - `docs/DEVELOPER_EXTENSION_GUIDE.md` — adding subagents, routing rules, and scenarios.
 - `docs/ROUTING_ROADMAP.md` — prioritized routing expansion roadmap.
+- `docs/OPENCODE_SKILLS.md` — repository-local OpenCode skill commands.
 
 ## Context references
 

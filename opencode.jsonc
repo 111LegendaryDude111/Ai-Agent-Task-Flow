@@ -13,13 +13,6 @@
             "context": 32768,
             "output": 8192
           }
-        },
-        "gpt-oss:20b": {
-          "name": "gpt-oss:20b",
-          "limit": {
-            "context": 32768,
-            "output": 8192
-          }
         }
       },
       "options": {
@@ -48,36 +41,61 @@
   "mcp": {
     "docker": {
       "type": "local",
-      "command": ["docker", "mcp", "gateway", "run"],
-      "enabled": false
+      "command": [
+        "docker",
+        "mcp",
+        "gateway",
+        "run"
+      ],
+      "enabled": true
     },
     "browser": {
       "type": "local",
-      "command": ["npx", "-y", "@playwright/mcp@latest"],
-      "enabled": false
+      "command": [
+        "npx",
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "enabled": true
     },
     "obsidian": {
       "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-filesystem", "{env:OBSIDIAN_VAULT_PATH}"],
-      "enabled": false
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "{env:OBSIDIAN_VAULT_PATH}"
+      ],
+      "enabled": true
     },
     "colab-proxy-mcp": {
       "type": "local",
-      "command": ["uvx", "git+https://github.com/googlecolab/colab-mcp"],
-      "enabled": false
+      "command": [
+        "uvx",
+        "git+https://github.com/googlecolab/colab-mcp"
+      ],
+      "enabled": true
     },
     "brave-search": {
       "type": "local",
-      "command": ["npx", "-y", "@modelcontextprotocol/server-brave-search"],
-      "enabled": false,
+      "command": [
+        "npx",
+        "-y",
+        "@modelcontextprotocol/server-brave-search"
+      ],
+      "enabled": true,
       "environment": {
         "BRAVE_API_KEY": "{env:BRAVE_API_KEY}"
       }
     },
     "duckduckgo-search": {
       "type": "local",
-      "command": ["npx", "-y", "duckduckgo-mcp-server"],
-      "enabled": false
+      "command": [
+        "npx",
+        "-y",
+        "duckduckgo-mcp-server"
+      ],
+      "enabled": true
     }
   },
   "agent": {

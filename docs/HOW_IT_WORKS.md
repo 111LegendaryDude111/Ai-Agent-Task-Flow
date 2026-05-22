@@ -9,8 +9,9 @@ User task
   → Synapse Orchestrator
   → Context discovery
   → Rule-based routing
+  → TDD discipline (`skills/tdd/SKILL.md`)
   → Matched subagent
-  → RED/GREEN/review gates
+  → RED/GREEN/refactor/review gates
   → verify → complete
 ```
 
@@ -35,7 +36,7 @@ User task
 | safe read-only bash: `pwd`, `ls *`, `rg *`, `grep *`, `git status*`, `git diff*` | direct execution |
 | failing test output | `TestDiagnostician` |
 | Playwright / E2E | `PlaywrightTestGenerator` |
-| test-first / TDD | `TestDesigner` |
+| test-first / TDD | load `skills/tdd/SKILL.md`, then delegate RED to `TestDesigner` |
 | ML / RAG / model evaluation | `MLDeveloper` |
 | Java/Kotlin/Gradle backend | `JavaDeveloper` |
 | JS/TS/React/CSS | `FrontendDeveloper` |
@@ -65,6 +66,8 @@ Subtasks must record gates before verification:
 - `red`
 - `green`
 - `review`
+
+AutoFlow applies `skills/tdd/SKILL.md` during implementation subtasks. The skill improves the existing loop: `TestDesigner` still owns RED tests, `BuildAgent` confirms RED/GREEN, the routed implementation subagent writes minimal production code, and any refactor happens only after GREEN with GREEN validation re-run before review.
 
 Then `task-cli verify` records verification evidence and `task-cli complete` records completion.
 

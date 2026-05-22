@@ -18,6 +18,7 @@ context-first → deterministic routing → delegated execution → verification
 | Routing rules | `context/core/rules/routing-rules.json` | Deterministic routing |
 | Task CLI | `scripts/task-cli.ts` | Lifecycle, gates, verify/complete |
 | State machine | `context/core/workflows/auto-flow-state-machine.json` | Allowed AutoFlow states |
+| TDD skill | `skills/tdd/SKILL.md` | Red-green-refactor discipline for AutoFlow implementation subtasks |
 | Audit | `scripts/audit_writer.py`, `scripts/validate_audit_events.py` | JSONL event writing/validation |
 
 ## Permissions model
@@ -36,6 +37,7 @@ context-first → deterministic routing → delegated execution → verification
 | `ContextScout` | read-only context discovery |
 | `TaskManager` | decomposition into verifiable subtasks |
 | `DocWriter` | documentation |
+| `skills/tdd/SKILL.md` | TDD discipline used by AutoFlow and TestDesigner |
 | `TestDesigner` | failing tests before implementation |
 | `TestDiagnostician` | failing test diagnosis |
 | `PlaywrightTestGenerator` | Playwright/E2E tests |
@@ -63,7 +65,7 @@ npm run task-cli -- verify <feature> <seq>
 npm run task-cli -- complete <feature> <seq> "summary"
 ```
 
-`verify` refuses to run until required gates are recorded. `complete` refuses stale or failed verification.
+`verify` refuses to run until required gates are recorded. `complete` refuses stale or failed verification. AutoFlow applies `skills/tdd/SKILL.md` for feature/bugfix subtasks: RED through `TestDesigner`, GREEN through `BuildAgent`, optional scoped refactor only after GREEN, then GREEN validation again before review.
 
 ## Validation suite
 

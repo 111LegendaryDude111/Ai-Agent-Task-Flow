@@ -61,6 +61,7 @@ npm run validate
 - `docs/DEVELOPER_EXTENSION_GUIDE.md` — расширение subagents/routing.
 - `docs/PROVIDER_DATA_POLICY.md` — provider/data classification policy.
 - `docs/ROUTING_ROADMAP.md` — roadmap routing domains.
+- `docs/OPENCODE_SKILLS.md` — локальные skill/slash-команды для OpenCode.
 
 ## Known limitations
 

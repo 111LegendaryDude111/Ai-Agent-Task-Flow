@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "version": "1.0.0",
   "name": "AutoFlow State Machine",
-  "description": "Deterministic state machine for test-first multi-agent implementation flow.",
+  "description": "Deterministic state machine for TDD red-green-refactor multi-agent implementation flow.",
   "entry_state": "intake",
   "terminal_states": ["done", "blocked"],
   "state_source_of_truth": ".tmp/tasks/{feature}/task.json and subtask_NN.json files",
@@ -10,6 +10,7 @@
     "orchestrator": "synapse",
     "context": "ContextScout",
     "planner": "TaskManager",
+    "tdd_skill": "skills/tdd/SKILL.md",
     "test_designer": "TestDesigner",
     "validator": "BuildAgent",
     "diagnostician": "TestDiagnostician",
@@ -25,7 +26,8 @@
       "actions": [
         "Restate the goal and assumptions.",
         "Ask for missing hard requirements before planning.",
-        "Classify the task type, stack, and complexity."
+        "Classify the task type, stack, and complexity.",
+        "For feature/bugfix implementation tasks, load skills/tdd/SKILL.md before decomposition."
       ],
       "transitions": [
         {
@@ -66,6 +68,7 @@
       "required_artifacts": [".tmp/tasks/{feature}/task.json", ".tmp/tasks/{feature}/subtask_NN.json"],
       "actions": [
         "Split the goal into vertical tracer-bullet subtasks.",
+        "Apply skills/tdd/SKILL.md planning checklist so each implementation subtask has one first behavior, a public interface or observable behavior, and deterministic RED/GREEN commands.",
         "Each subtask must include Definition of Ready and Definition of Done in acceptance criteria.",
         "Each subtask must include suggested_agent, deliverables, dependencies, and verification_spec.",
         "Run npm run task-cli -- validate for the feature when permitted."
@@ -112,8 +115,9 @@
       "purpose": "Create or confirm focused failing behavior coverage before production changes.",
       "required_artifacts": ["test_files", "targeted_test_command", "expected_red_state"],
       "actions": [
+        "Load and apply skills/tdd/SKILL.md before writing or changing tests.",
         "Write tests only.",
-        "Prefer one behavior test for the selected subtask.",
+        "Prefer one behavior test for the selected subtask; do not write future tests before the current RED->GREEN cycle completes.",
         "Use existing test conventions, fixtures, and public interfaces.",
         "Return the targeted command and expected failure."
       ],
@@ -162,7 +166,7 @@
         "Route via context/core/rules/routing-rules.json to the implementation subagent.",
         "Touch only files needed for the selected subtask.",
         "Do not weaken tests unless they contradict explicit requirements.",
-        "Stop after the selected behavior is implemented."
+        "Stop after the selected behavior is implemented; do not refactor until BuildAgent confirms GREEN."
       ],
       "transitions": [
         {
@@ -183,12 +187,34 @@
       ],
       "transitions": [
         {
+          "to": "refactor_after_green",
+          "when": "all targeted validation passes and scoped refactor is needed"
+        },
+        {
           "to": "review",
-          "when": "all targeted validation passes"
+          "when": "all targeted validation passes and no scoped refactor is needed"
         },
         {
           "to": "diagnose_failure",
           "when": "any targeted validation fails"
+        }
+      ]
+    },
+    {
+      "id": "refactor_after_green",
+      "owner": "implementer",
+      "purpose": "Apply the TDD refactor step after GREEN without adding behavior or widening scope.",
+      "required_artifacts": ["refactor_changes"],
+      "actions": [
+        "Load and apply skills/tdd/SKILL.md refactoring checklist.",
+        "Refactor only duplication, shallow module shape, naming, or testability issues revealed by the selected behavior.",
+        "Do not add new behavior, new tests for future behavior, or unrelated cleanup.",
+        "Return to validate_green so BuildAgent re-runs targeted validation before review."
+      ],
+      "transitions": [
+        {
+          "to": "validate_green",
+          "when": "refactor is complete and targeted validation must be re-run"
         }
       ]
     },
@@ -333,7 +359,9 @@
   "global_guards": [
     "matched subagents may edit/write inside target repository after task approval; safe read-only bash allowlist excludes broad file discovery; other bash/delete/dependency-install/network/destructive-git/outside-repo/secrets operations require explicit approval before execution",
     "Synapse does not directly implement production code",
-    "one behavior -> one failing test -> minimal implementation -> green",
+    "AutoFlow must load and apply skills/tdd/SKILL.md for implementation subtasks",
+    "one behavior -> one failing test -> minimal implementation -> green -> optional scoped refactor -> green",
+    "never refactor while RED and always re-run GREEN validation after refactor",
     "tests must not be weakened unless they contradict explicit requirements",
     "completion requires npm run task-cli -- verify then npm run task-cli -- complete"
   ]
